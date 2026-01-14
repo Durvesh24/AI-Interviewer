@@ -111,7 +111,7 @@
             btn.innerHTML = `<span class="spinner" style="width:20px;height:20px;border-width:2px;margin-right:8px;"></span> Setting up environment...`;
 
             try {
-                const res = await fetch("http://localhost:5000/start-interview", {
+                const res = await fetch("/start-interview", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -186,7 +186,7 @@
             loading.style.display = "flex";
 
             try {
-                const res = await fetch("http://localhost:5000/answer", {
+                const res = await fetch("/answer", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -238,7 +238,7 @@
 
         async function getSummary() {
             try {
-                const res = await fetch("http://localhost:5000/interview-summary", {
+                const res = await fetch("/interview-summary", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -273,7 +273,7 @@
             btn.innerHTML = `<span class="spinner" style="width:16px;height:16px;border-width:2px;margin-right:8px;"></span> Fetching expert solutions...`;
 
             try {
-                const res = await fetch("http://localhost:5000/ideal-answers", {
+                const res = await fetch("/ideal-answers", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

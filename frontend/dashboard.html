@@ -161,7 +161,7 @@
 
         async function fetchInterviews() {
             try {
-                const endpoint = role === 'admin' ? 'http://localhost:5000/admin/all-interviews' : 'http://localhost:5000/my-interviews';
+                const endpoint = role === 'admin' ? '/admin/all-interviews' : '/my-interviews';
                 const res = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${token}` } });
 
                 if (res.status === 401 || res.status === 403) return logout();
@@ -204,7 +204,7 @@
         async function fetchUsers() {
             if (role !== 'admin') return;
             try {
-                const res = await fetch('http://localhost:5000/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
+                const res = await fetch('/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
                 const users = await res.json();
 
                 const list = document.getElementById('user-list');
@@ -239,7 +239,7 @@
         async function deleteUser(id) {
             if (!confirm("Are you sure? This will delete the user and all their data permanently.")) return;
             try {
-                const res = await fetch(`http://localhost:5000/admin/users/${id}`, {
+                const res = await fetch(`/admin/users/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -252,7 +252,7 @@
             const newRole = prompt("Enter new role (user/admin):", currentRole);
             if (!newRole || newRole === currentRole) return;
             try {
-                const res = await fetch(`http://localhost:5000/admin/users/${id}`, {
+                const res = await fetch(`/admin/users/${id}`, {
                     method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${token}`,
