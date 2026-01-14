@@ -13,6 +13,22 @@
 
     <!-- Link CSS -->
     <link rel="stylesheet" href="style.css">
+
+    <!-- Auth check BEFORE body renders to prevent flicker -->
+    <script>
+        // Hide body initially
+        document.documentElement.style.visibility = 'hidden';
+
+        // Check auth immediately
+        var token = localStorage.getItem('token');
+        if (!token) {
+            // Redirect before page becomes visible
+            window.location.href = 'login.html';
+        } else {
+            // Auth passed, show page
+            document.documentElement.style.visibility = 'visible';
+        }
+    </script>
 </head>
 
 <body>
@@ -85,11 +101,8 @@
     </div>
 
     <script>
-        // --- AUTH CHECK ---
+        // Auth check already done in <head>, token is available
         const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = 'login.html';
-        }
 
         let interviewId = "";
         let questions = [];

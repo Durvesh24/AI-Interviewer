@@ -33,21 +33,13 @@
   </nav>
 
   <script>
-    // Simple auth check for navbar
-    const token = localStorage.getItem('token');
+    // Clear auth state on landing page to ensure fresh start
+    localStorage.clear();
+    
+    // Simple auth check for navbar (will always show login/signup now)
     const authLinks = document.getElementById('auth-links');
-    if (token) {
-      authLinks.innerHTML = `
-            <a href="dashboard.html" style="margin-right:15px;text-decoration:none;color:var(--text-color);font-weight:600;">Dashboard</a>
-            <a href="#" onclick="logout()" style="text-decoration:none;color:var(--text-muted);">Logout</a>
-        `;
-    }
-
-    function logout() {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userEmail');
-      window.location.reload();
-    }
+    // No need to check token since we just cleared it
+    // Always show login/signup buttons
   </script>
 
   <header class="hero-section">

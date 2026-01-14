@@ -120,7 +120,7 @@ app.get("/admin/all-interviews", authenticateToken, async (req, res) => {
     const db = await getDb();
     // Join with users table to get email
     const interviews = await db.all(`
-            SELECT i.id, i.role, i.date, i.scores, u.email 
+            SELECT i.id, i.role, i.date, i.scores, i.user_id, u.email 
             FROM interviews i 
             JOIN users u ON i.user_id = u.id 
             ORDER BY i.date DESC
@@ -179,6 +179,49 @@ app.put("/admin/users/:id", authenticateToken, async (req, res) => {
     await db.run("UPDATE users SET role = ? WHERE id = ?", [role, id]);
 
     res.json({ message: "User updated successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Get Interviews for Specific User
+app.get("/admin/users/:id/interviews", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
+    const { id } = req.params;
+    const db = await getDb();
+
+    // Get user info
+    const user = await db.get("SELECT id, email FROM users WHERE id = ?", [id]);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Get all interviews for this user
+    const interviews = await db.all(
+      "SELECT id, role, date, scores FROM interviews WHERE user_id = ? ORDER BY date DESC",
+      [id]
+    );
+
+    const parsedInterviews = interviews.map(i => ({
+      ...i,
+      scores: JSON.parse(i.scores || "[]")
+    }));
+
+    res.json({ user, interviews: parsedInterviews });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Delete Interview
+app.delete("/admin/interviews/:id", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
+    const { id } = req.params;
+    const db = await getDb();
+
+    await db.run("DELETE FROM interviews WHERE id = ?", [id]);
+
+    res.json({ message: "Interview deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
