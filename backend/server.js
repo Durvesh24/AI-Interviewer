@@ -236,14 +236,17 @@ app.post("/start-interview", authenticateToken, async (req, res) => {
     role = role && role.trim() ? role.trim() : "Software Engineer";
     const difficulty = req.body.difficulty || "Beginner";
 
+    const questionCount = req.body.questionCount || 3;
+
     // Create Metadata
     const interviewId = Date.now().toString();
     const db = await getDb();
 
+    // Use a valid model name
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
     const prompt = `You are a professional interviewer.
-    Ask exactly 3 short and to the point ${difficulty}-level interview questions for a ${role}.
+    Ask exactly ${questionCount} short and to the point ${difficulty}-level interview questions for a ${role}.
     Return only numbered questions.`;
 
     const result = await model.generateContent(prompt);
