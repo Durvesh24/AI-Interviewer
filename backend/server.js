@@ -240,31 +240,18 @@ app.post("/start-interview", authenticateToken, async (req, res) => {
     const interviewId = Date.now().toString();
     const db = await getDb();
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: `You are a professional interviewer.
-                        Ask exactly 3 short and to the point ${difficulty}-level interview questions for a ${role}.
-                        Return only numbered questions.`,
-              },
-            ],
-          },
-        ],
-      }),
-    });
+    const prompt = `You are a professional interviewer.
+    Ask exactly 3 short and to the point ${difficulty}-level interview questions for a ${role}.
+    Return only numbered questions.`;
 
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
     if (!text) {
-      return res.status(500).json({ error: "Gemini did not return questions", rawResponse: data });
+      return res.status(500).json({ error: "Gemini did not return questions" });
     }
 
     const questions = text.split("\n").map(q => q.trim()).filter(q => q.length > 0);
@@ -308,28 +295,18 @@ app.post("/answer", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Answer is required" });
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          role: "user",
-          parts: [{
-            text: `You are an interview coach.
-                    Question: ${question}
-                    Candidate Answer: ${answer}
-                    Evaluate briefly and respond exactly like this:
-                    Score (out of 10): <number>
-                    Feedback: <one sentence>`
-          }]
-        }]
-      })
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return res.status(500).json({ error: "Gemini response missing text", details: data });
+    const prompt = `You are an interview coach.
+    Question: ${question}
+    Candidate Answer: ${answer}
+    Evaluate briefly and respond exactly like this:
+    Score (out of 10): <number>
+    Feedback: <one sentence>`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
     const match = text.match(/Score\s*\(out of 10\)\s*:\s*(\d+)/i);
     const score = match ? parseInt(match[1]) : 0;
@@ -398,32 +375,24 @@ app.post("/ideal-answers", authenticateToken, async (req, res) => {
     const questions = JSON.parse(questionsJson);
     const difficulty = "Intermediate"; // Could store this in DB too if needed, simplifying for now
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `
-                You are a senior interviewer.
-                For each interview question, generate an IDEAL (10/10) answer.
-                Answers should be clear, short, structured, and interview-ready.
-                Job Role: ${role}
-                Return the response STRICTLY in JSON like this:
-                [
-                  { "question": "Question text", "idealAnswer": "Perfect answer text" }
-                ]
-                Questions:
-                ${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}
-                `
-          }]
-        }]
-      })
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-    const data = await response.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const prompt = `
+        You are a senior interviewer.
+        For each interview question, generate an IDEAL (10/10) answer.
+        Answers should be clear, short, structured, and interview-ready.
+        Job Role: ${role}
+        Return the response STRICTLY in JSON like this:
+        [
+          { "question": "Question text", "idealAnswer": "Perfect answer text" }
+        ]
+        Questions:
+        ${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}
+    `;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const rawText = response.text();
 
     let idealAnswers;
     try {
