@@ -37,8 +37,16 @@
     const authLinks = document.getElementById('auth-links');
 
     if (token) {
-      // User is logged in, show Dashboard button
-      authLinks.innerHTML = '<a href="dashboard.html" class="btn-login" style="background-color: var(--primary-color); border-color: var(--primary-color);">Dashboard</a>';
+      // User is logged in, show Dashboard button and Logout button
+      authLinks.innerHTML = `
+        <a href="dashboard.html" class="btn-login" style="background-color: var(--primary-color); border-color: var(--primary-color); margin-right: 10px;">Dashboard</a>
+        <a href="#" onclick="logout()" class="btn-login" style="background-color: transparent; border: 1px solid var(--text-color); color: var(--text-color);">Logout</a>
+      `;
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.reload();
     }
   </script>
 
