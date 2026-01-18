@@ -21,8 +21,22 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "../frontend")));
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey"; // In production, use .env
-const hf = new HfInference(process.env.HF_API_KEY);
-console.log("HF_API_KEY Loaded:", process.env.HF_API_KEY ? "YES (" + process.env.HF_API_KEY.substring(0, 5) + "...)" : "NO");
+
+// Helper to sanitize API Key
+const getHfKey = () => {
+  let key = process.env.HF_API_KEY;
+  if (!key) return undefined;
+  key = key.trim();
+  // Remove wrapping quotes if present
+  if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+    key = key.slice(1, -1);
+  }
+  return key;
+};
+
+const apiKey = getHfKey();
+const hf = new HfInference(apiKey);
+console.log("HF_API_KEY Loaded:", apiKey ? "YES (" + apiKey.substring(0, 5) + "...)" : "NO");
 
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
