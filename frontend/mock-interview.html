@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mock Interview - AI Interview Coach</title>
+    <title>Practice Questions - AI Interview Coach</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,7 +36,7 @@
     <div class="app-container">
         <header class="app-header">
             <a href="index.html" class="back-link">← Back to Home</a>
-            <h1>Mock Interview</h1>
+            <h1>Practice Questions</h1>
             <p class="subtitle">Simulate a real interview experience</p>
         </header>
 
@@ -262,15 +262,17 @@
                         showQuestion();
                     }, 4000);
                 } else {
-                    // Last Question Logic: Wait 4s then show summary
+                    // Last Question Logic: Hide feedback immediately and show summary
+                    feedbackBox.innerHTML = '';
+                    feedbackBox.classList.add("hidden-empty");
+
                     setTimeout(() => {
                         document.getElementById("progressBar").style.width = "100%";
                         document.getElementById("questionBox").classList.add("hidden");
-                        document.getElementById("feedbackBox").classList.add("hidden-empty");
                         getSummary();
                         // Reveal Ideal Answers Section
                         document.querySelector(".ideal-answers-section").classList.remove("hidden");
-                    }, 4000);
+                    }, 1000);
                 }
 
             } catch (error) {
