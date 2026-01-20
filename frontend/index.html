@@ -33,8 +33,13 @@
   </nav>
 
   <script>
-    // Clear any previous session when the landing page is opened
-    localStorage.clear();
+    // Only clear session if this is a new browser session (new tab/window)
+    // sessionStorage is cleared when browser/tab is closed, so we use it as a flag
+    if (!sessionStorage.getItem('sessionActive')) {
+      // This is a new browser session - clear previous login
+      localStorage.clear();
+      sessionStorage.setItem('sessionActive', 'true');
+    }
 
     const token = localStorage.getItem('token');
     const authLinks = document.getElementById('auth-links');
