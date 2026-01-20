@@ -9,6 +9,14 @@ import { HfInference } from "@huggingface/inference";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { getDb } from "./db.js";
+import multer from "multer";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const pdfParse = require("pdf-parse");
+
+// Multer Setup (Memory Storage)
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -252,6 +260,7 @@ app.post("/start-interview", authenticateToken, async (req, res) => {
     const difficulty = req.body.difficulty || "Beginner";
 
     const questionCount = req.body.questionCount || 3;
+    const resumeContext = req.body.resumeContext || "";
 
     // Create Metadata
     const interviewId = Date.now().toString();
@@ -261,8 +270,34 @@ app.post("/start-interview", authenticateToken, async (req, res) => {
     const model = "Qwen/Qwen2.5-72B-Instruct";
 
     const systemPrompt = "You are a professional interviewer.";
-    const userPrompt = `Ask exactly ${questionCount} short and to the point ${difficulty}-level interview questions for a ${role}.
+
+    let userPrompt = `Ask exactly ${questionCount} short and to the point ${difficulty}-level interview questions for a ${role}.
     Return only numbered questions.`;
+
+    if (resumeContext) {
+      console.log(`Generating tailored interview questions based on resume context (Length: ${resumeContext.length})...`);
+
+      userPrompt = `
+        You are an expert technical interviewer conducting a mock interview for the role of ${role}.
+        
+        CANDIDATE RESUME CONTENT:
+        """
+        ${resumeContext.slice(0, 4000)}
+        """
+        
+        INSTRUCTIONS:
+        1. Ask exactly ${questionCount} ${difficulty}-level interview questions.
+        2. CRITICAL: At least 50% of your questions MUST explicitly reference specific details found in the resume above.
+           - Example: "I see you worked on [Project Name], can you explain..."
+           - Example: "You listed [Skill] as a proficiency, how would you..."
+        3. Do not simply ask generic questions. Challenge the candidate on their stated experience.
+        4. If the resume is sparse, ask general questions relevant to ${role}, but prioritize resume-based questions.
+        
+        Return ONLY the numbered list of questions. Do not include any introductory text.
+        `;
+    } else {
+      console.log("No resume context provided, generating generic questions.");
+    }
 
     console.log("Requesting interview questions from Hugging Face...");
     let response;
@@ -469,6 +504,126 @@ app.post("/ideal-answers", authenticateToken, async (req, res) => {
 
   } catch (err) {
     console.error("IDEAL ANSWER ERROR:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- RESUME REVIEW ROUTES ---
+
+app.post("/analyze-resume", upload.single("resume"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No resume file uploaded" });
+    }
+
+    const { targetRole } = req.body;
+    if (!targetRole) {
+      return res.status(400).json({ error: "Target job role is required" });
+    }
+
+    // 1. Text Extraction (PDF or Image)
+    const dataBuffer = req.file.buffer;
+    let resumeText = "";
+    const mimeType = req.file.mimetype;
+
+    try {
+      if (mimeType === "application/pdf") {
+        const pdfData = await pdfParse(dataBuffer);
+        resumeText = pdfData.text;
+      } else if (mimeType === "image/jpeg" || mimeType === "image/png") {
+        console.log("Processing Image Resume via OCR...");
+        const tesseract = require("tesseract.js");
+        const { data: { text } } = await tesseract.recognize(dataBuffer, 'eng', {
+          logger: m => console.log(m) // Log progress
+        });
+        resumeText = text;
+        console.log("OCR Complete. Text length:", resumeText ? resumeText.length : 0);
+        if (resumeText) {
+          console.log("OCR Text Snippet:", resumeText.substring(0, 100).replace(/\n/g, ' '));
+        }
+      } else {
+        return res.status(400).json({ error: "Unsupported file type. Please upload PDF, JPG, or PNG." });
+      }
+
+      if (!resumeText || resumeText.trim().length < 50) {
+        console.warn("Extracted text is too short or empty.");
+        return res.status(400).json({ error: "No text found in PDF. If this is a Scanned PDF (Image-based), please convert it to JPG/PNG and upload it so we can use OCR." });
+      }
+    } catch (parseError) {
+      console.error("Parsing Error:", parseError);
+      return res.status(500).json({ error: "Failed to read file", details: parseError.message });
+    }
+
+    // Truncate if too long (approx 3000 chars should be enough for analysis without hitting tokens limits)
+    resumeText = resumeText.slice(0, 4000);
+
+    // 2. AI Analysis
+    const model = "Qwen/Qwen2.5-72B-Instruct";
+    const systemPrompt = "You are an expert ATS (Applicant Tracking System) and Resume Coach.";
+
+    // JSON schema enforcement in prompt
+    const userPrompt = `
+      Analyze the following resume for the role of "${targetRole}".
+      
+      Provide a constructive critique.
+      1. ATS Score (0-100). Be strict but fair.
+      2. Key matching keywords found (top 5).
+      3. CRITICAL missing skills (limit to top 3 most important missing hard skills). Do not list generic soft skills like "communication" unless absent.
+      4. Formatting or structural issues (keep it brief).
+
+      Return STRICTLY JSON in this format:
+      {
+        "atsScore": <number>,
+        "keywordsMatched": ["word1", "word2"],
+        "missingSkills": ["skill1", "skill2"],
+        "formattingIssues": ["issue1", "issue2"]
+      }
+
+      RESUME CONTENT:
+      ${resumeText}
+    `;
+
+    console.log(`Analyzing resume for ${targetRole}...`);
+
+    let response;
+    try {
+      response = await hf.chatCompletion({
+        model: model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        max_tokens: 1024,
+        temperature: 0.2 // Lower temp for more consistent JSON
+      });
+    } catch (apiError) {
+      console.error("HF API Analysis Error:", apiError);
+      return res.status(500).json({ error: "AI Service failed to analyze resume" });
+    }
+
+    const rawContent = response.choices[0].message.content;
+    console.log("AI Response received");
+
+    // 3. Parse JSON response
+    let analysisResult;
+    try {
+      // Attempt to extract JSON block if wrapped in markdown code blocks
+      const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        analysisResult = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("No JSON object found in response");
+      }
+    } catch (jsonError) {
+      console.error("JSON Parse Error:", jsonError, "Raw:", rawContent);
+      // Fallback: Return raw text if JSON fails, or error
+      return res.status(500).json({ error: "Failed to parse AI analysis", raw: rawContent });
+    }
+
+    res.json({ ...analysisResult, extractedText: resumeText });
+
+  } catch (err) {
+    console.error("RESUME ANALYSIS ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });

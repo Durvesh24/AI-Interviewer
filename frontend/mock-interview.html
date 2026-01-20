@@ -124,6 +124,14 @@
         };
         const API_BASE_URL = getApiBaseUrl();
 
+        // Check for saved role from Resume Review and pre-fill
+        window.addEventListener('load', () => {
+            const savedRole = localStorage.getItem('targetRole');
+            if (savedRole) {
+                document.getElementById("role").value = savedRole;
+            }
+        });
+
 
         async function startInterview() {
             const role = document.getElementById("role").value;
@@ -142,6 +150,13 @@
             const questionCountVal = document.getElementById("questionCount").value;
             const questionCount = parseInt(questionCountVal) || 3;
 
+            // Check for resume context
+            const resumeContext = localStorage.getItem('resumeContext');
+            const savedRole = localStorage.getItem('targetRole');
+
+            // Auto-fill role if empty and we have one saved
+            const finalRole = role || savedRole;
+
             try {
                 const res = await fetch(`${API_BASE_URL}/start-interview`, {
                     method: "POST",
@@ -149,8 +164,19 @@
                         "Content-Type": "application/json",
                         "Authorization": `Bearer ${token}`
                     },
-                    body: JSON.stringify({ role, difficulty, questionCount })
+                    body: JSON.stringify({
+                        role: finalRole || role,
+                        difficulty,
+                        questionCount,
+                        resumeContext: resumeContext
+                    })
                 });
+
+                // Clear context after using it so it doesn't persist forever
+                if (resumeContext) {
+                    localStorage.removeItem('resumeContext');
+                    localStorage.removeItem('targetRole');
+                }
 
                 if (res.status === 401 || res.status === 403) {
                     alert("Session expired. Please login again.");

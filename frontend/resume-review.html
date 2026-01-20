@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Review | PrepAI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Auth check BEFORE body renders to prevent flicker -->
+    <script>
+        // Hide body initially
+        document.documentElement.style.visibility = 'hidden';
+
+        // Check auth immediately
+        var token = localStorage.getItem('token');
+        if (!token) {
+            // Redirect before page becomes visible
+            window.location.href = 'login.html';
+        } else {
+            // Auth passed, show page
+            document.documentElement.style.visibility = 'visible';
+        }
+    </script>
+</head>
+
+<body>
+    <!-- Navbar removed to match Practice Questions page -->
+
+    <div class="app-container">
+        <header class="app-header">
+            <a href="index.html" class="back-link">← Back to Home</a>
+            <h1>Resume Review</h1>
+            <p class="subtitle">AI-powered ATS feedback and improvements</p>
+        </header>
+
+        <main class="main-content">
+            <!-- Upload Section -->
+            <div class="card setup-card" id="uploadCard">
+                <div class="form-group">
+                    <label for="targetRole">Target Job Role</label>
+                    <input type="text" id="targetRole" class="input-field" placeholder="e.g. Senior Software Engineer"
+                        value="Software Engineer">
+                </div>
+
+                <div class="upload-zone" id="dropZone">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
+                    <p style="margin-top: 1rem; color: var(--text-color);">Drag & drop your PDF or Image resume here</p>
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">PDF, JPEG, PNG supported</p>
+                    <input type="file" id="fileInput" accept="application/pdf,image/png,image/jpeg" hidden>
+                </div>
+
+                <div id="fileInfo" style="display: none; margin-top: 1.5rem; text-align: center;">
+                    <p class="subtitle">Selected File: <span id="fileName"
+                            style="font-weight: 600; color: var(--primary-color);"></span></p>
+                </div>
+
+                <button id="analyzeBtn" class="btn btn-primary" style="margin-top: 2rem;" disabled>🚀 Analyze
+                    Resume</button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading" class="card" style="display: none; text-align: center; padding: 4rem;">
+                <div class="spinner"></div>
+                <p class="subtitle" style="margin-top: 1.5rem;">Analyzing your resume... This might take up to 20
+                    seconds.</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results" class="results-container">
+                <!-- Score Card -->
+                <div class="card" style="text-align: center; margin-bottom: 2rem;">
+                    <h3 class="section-title">ATS Compatibility Score</h3>
+                    <div class="score-circle" id="scoreCircle">
+                        <span class="score-value" id="scoreText">0</span>
+                    </div>
+                    <p id="scoreVerdict"
+                        style="margin-top: 1rem; font-size: 1.2rem; font-weight: 600; color: var(--secondary-color);">
+                        Needs Improvement</p>
+                </div>
+
+                <!-- Analysis Grid -->
+                <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <!-- Keywords Found -->
+                    <div class="card">
+                        <h3 style="margin-bottom: 1rem; color: var(--success-color); font-size: 1.2rem;">✅ Matched
+                            Keywords</h3>
+                        <div id="matchedKeywords" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            <!-- Badges go here -->
+                        </div>
+                    </div>
+
+                    <!-- Missing Skills -->
+                    <div class="card">
+                        <h3 style="margin-bottom: 1rem; color: var(--error-color); font-size: 1.2rem;">⚠️ Critical
+                            Missing Skills</h3>
+                        <div id="missingSkills" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            <!-- Badges go here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formatting Issues -->
+                <div class="card" style="margin-top: 2rem;">
+                    <h3 style="margin-bottom: 1rem; font-size: 1.2rem;">📋 Formatting & Structure</h3>
+                    <ul id="formattingList" class="formatting-list">
+                        <!-- List items here -->
+                    </ul>
+                </div>
+
+                <div style="text-align: center; margin-top: 3rem; display: flex; gap: 1rem; justify-content: center;">
+                    <button onclick="location.reload()" class="btn btn-secondary" style="width: auto;">Analyze
+                        Another</button>
+                    <a href="mock-interview.html" class="btn btn-primary" style="width: auto;">Practice Interview</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // File Upload Logic
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        let selectedFile = null;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            const validTypes = ['application/pdf', 'image/png', 'image/jpeg'];
+            if (file && validTypes.includes(file.type)) {
+                selectedFile = file;
+                fileName.textContent = file.name;
+                fileInfo.style.display = 'block';
+                analyzeBtn.disabled = false;
+            } else {
+                alert('Please upload a valid PDF, JPEG, or PNG file.');
+            }
+        }
+
+        // Analysis Logic
+        analyzeBtn.addEventListener('click', async () => {
+            const role = document.getElementById('targetRole').value;
+            if (!role) return alert('Please enter a target role.');
+            if (!selectedFile) return alert('Please upload a resume.');
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // UI Updates
+            document.getElementById('uploadCard').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+
+            // Prepare Data
+            const formData = new FormData();
+            formData.append('resume', selectedFile);
+            formData.append('targetRole', role);
+
+            // API Call
+            // Note: In deployment, you might need dynamic URL detection same as login/signup
+            const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'http://localhost:5000'
+                : ''; // Relative path for processed deployment
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/analyze-resume`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                const data = await response.json();
+
+                // Save context for interview
+                if (data.extractedText) {
+                    localStorage.setItem('resumeContext', data.extractedText);
+                    localStorage.setItem('targetRole', role); // Also save role
+                }
+
+                displayResults(data);
+
+            } catch (err) {
+                console.error(err);
+                alert('Analysis failed: ' + err.message);
+                document.getElementById('uploadCard').style.display = 'block';
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+
+        function displayResults(data) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('results').style.display = 'block';
+
+            // Score with Animation
+            const scoreText = document.getElementById('scoreText');
+            const scoreCircle = document.getElementById('scoreCircle');
+            let currentScore = 0;
+            const targetScore = data.atsScore || 0;
+
+            // Set Color based on score
+            // 0% is start, X% is filled
+            // Just simulate progress bar via conic-gradient
+            scoreCircle.style.background = `conic-gradient(var(--primary-color) ${targetScore}%, rgba(255,255,255,0.1) 0%)`;
+
+            // Simple counter animation
+            const interval = setInterval(() => {
+                if (currentScore >= targetScore) clearInterval(interval);
+                else {
+                    currentScore++;
+                    scoreText.textContent = currentScore;
+                }
+            }, 10);
+
+            // Verdict
+            const verdict = document.getElementById('scoreVerdict');
+            if (targetScore >= 80) verdict.textContent = "Excellent Match!";
+            else if (targetScore >= 60) verdict.textContent = "Good Potential";
+            else verdict.textContent = "Needs Optimization";
+
+            // Keywords
+            const matchedContainer = document.getElementById('matchedKeywords');
+            matchedContainer.innerHTML = data.keywordsMatched.map(k =>
+                `<span class="keyword-badge matched">✓ ${k}</span>`
+            ).join('');
+
+            // Missing
+            const missingContainer = document.getElementById('missingSkills');
+            missingContainer.innerHTML = data.missingSkills.map(k =>
+                `<span class="keyword-badge missing">! ${k}</span>`
+            ).join('');
+
+            // Formatting
+            const formattingList = document.getElementById('formattingList');
+            if (data.formattingIssues && data.formattingIssues.length > 0) {
+                formattingList.innerHTML = data.formattingIssues.map(i => `<li>${i}</li>`).join('');
+            } else {
+                formattingList.innerHTML = '<li>✅ No major formatting issues detected.</li>';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('userEmail');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+
+</html>
