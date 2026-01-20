@@ -262,17 +262,16 @@
                         showQuestion();
                     }, 4000);
                 } else {
-                    // Last Question Logic: Hide feedback immediately and show summary
-                    feedbackBox.innerHTML = '';
-                    feedbackBox.classList.add("hidden-empty");
-
+                    // Last Question Logic: Show feedback for 4s, then hide both question and feedback together
                     setTimeout(() => {
                         document.getElementById("progressBar").style.width = "100%";
                         document.getElementById("questionBox").classList.add("hidden");
+                        feedbackBox.innerHTML = '';
+                        feedbackBox.classList.add("hidden-empty");
                         getSummary();
                         // Reveal Ideal Answers Section
                         document.querySelector(".ideal-answers-section").classList.remove("hidden");
-                    }, 1000);
+                    }, 4000);
                 }
 
             } catch (error) {
