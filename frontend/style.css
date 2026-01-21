@@ -957,23 +957,115 @@ input:-webkit-autofill:active {
 }
 
 /* Mobile Responsive Updates */
+/* Mobile Navigation Styles */
+/* Hide toggle on desktop */
+.mobile-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 1001;
+}
+
+.mobile-toggle .bar {
+  display: block;
+  width: 25px;
+  height: 3px;
+  margin: 5px auto;
+  -webkit-transition: all 0.3s ease-in-out;
+  transition: all 0.3s ease-in-out;
+  background-color: var(--text-color);
+  border-radius: 2px;
+}
+
+/* Mobile Breakpoint Updates */
+/* Mobile Responsive Updates */
 @media (max-width: 768px) {
-
-  /* Navigation */
   .nav-container {
-    flex-direction: column;
-    gap: 15px;
+    flex-direction: row;
+    /* Keep logo and hamburger inline */
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    padding: 15px 20px;
   }
 
+  /* Show Toggle */
+  .mobile-toggle {
+    display: block;
+  }
+
+  /* Hamburger Animation */
+  .mobile-toggle.active .bar:nth-child(2) {
+    opacity: 0;
+  }
+
+  .mobile-toggle.active .bar:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+  }
+
+  .mobile-toggle.active .bar:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+  }
+
+  /* Nav Links Dropdown */
   .nav-links {
+    position: absolute;
+    top: 100%;
+    /* Below navbar */
+    left: 0;
     width: 100%;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 15px;
+    background: rgba(15, 23, 42, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 20px;
+    gap: 25px;
+    border-bottom: 1px solid var(--card-border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+
+    /* Animation State: Closed */
+    opacity: 0;
+    transform: translateY(-20px);
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 999;
   }
 
-  .navbar {
+  /* Animation State: Open */
+  .nav-links.mobile-open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+
+  /* Mobile Typography & Spacing */
+  .nav-links a {
+    font-size: 1.2rem;
+    font-weight: 600;
     padding: 10px 0;
+    width: 100%;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .nav-links a:last-child {
+    border-bottom: none;
+  }
+
+  .nav-links .btn-login,
+  .nav-links .btn-signup {
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin: 5px 0;
+  }
+
+  .nav-links .btn-login {
+    margin-right: 0;
+    margin-bottom: 15px;
   }
 
   /* Typography */

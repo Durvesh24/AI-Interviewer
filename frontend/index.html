@@ -20,7 +20,14 @@
   <nav class="navbar">
     <div class="nav-container">
       <a href="index.html" class="logo">AI Interview Coach</a>
-      <div class="nav-links">
+
+      <button class="mobile-toggle" aria-label="Toggle Navigation">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </button>
+
+      <div class="nav-links" id="navLinks">
         <a href="index.html" class="active">Home</a>
         <a href="#features">Features</a>
         <a href="#about">About</a>
@@ -55,6 +62,17 @@
     function logout() {
       localStorage.clear();
       window.location.reload();
+    }
+
+    // Mobile Menu Toggle
+    const mobileToggle = document.querySelector('.mobile-toggle');
+    const navLinks = document.querySelector('.nav-links');
+
+    if (mobileToggle) {
+      mobileToggle.addEventListener('click', () => {
+        navLinks.classList.toggle('mobile-open');
+        mobileToggle.classList.toggle('active');
+      });
     }
   </script>
 
