@@ -956,7 +956,89 @@ input:-webkit-autofill:active {
   }
 }
 
-/* Resume Review Specifics */
+/* Mobile Responsive Updates */
+@media (max-width: 768px) {
+
+  /* Navigation */
+  .nav-container {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .nav-links {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+
+  .navbar {
+    padding: 10px 0;
+  }
+
+  /* Typography */
+  .hero-content h1 {
+    font-size: 2.5rem;
+  }
+
+  .app-header h1 {
+    font-size: 2.2rem;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .section-heading {
+    font-size: 2rem;
+  }
+
+  /* Layout Containers */
+  .app-container,
+  .features-section,
+  .hero-section {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  .setup-card,
+  .question-card,
+  .feedback-card,
+  .summary-card,
+  .ideal-answers-card {
+    padding: 20px 15px;
+  }
+
+  /* Grids */
+  .grid,
+  .results-grid,
+  .features-grid,
+  .comparison-grid {
+    grid-template-columns: 1fr !important;
+    /* Force stack */
+    gap: 20px;
+  }
+
+  /* Resume Review Specifics */
+  .score-circle {
+    width: 120px;
+    height: 120px;
+    font-size: 2rem;
+  }
+
+  .upload-zone {
+    padding: 2rem 1rem;
+  }
+}
+
+/* Resume Review Grid Class (Desktop Default) */
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Base Resume Review Styles */
 .upload-zone {
   border: 2px dashed var(--card-border);
   padding: 3rem;
@@ -992,8 +1074,10 @@ input:-webkit-autofill:active {
   position: absolute;
   width: 120px;
   height: 120px;
-  background: #0f172a; /* Fallback for transparency */
-  background: var(--card-bg); /* Use card bg to blend */
+  background: #0f172a;
+  /* Fallback for transparency */
+  background: var(--card-bg);
+  /* Use card bg to blend */
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 50%;
