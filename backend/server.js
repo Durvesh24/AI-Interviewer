@@ -13,6 +13,7 @@ import multer from "multer";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const pdfParse = require("pdf-parse");
+import { sendEmail } from "./emailService.js";
 
 // Multer Setup (Memory Storage)
 const storage = multer.memoryStorage();
@@ -87,6 +88,13 @@ app.post("/register", async (req, res) => {
 
     await db.run("INSERT INTO users (email, password, role) VALUES (?, ?, ?)", [email, hashedPassword, role]);
 
+    // Send Welcome Email
+    await sendEmail(
+      email,
+      "Welcome to AI Interview Coach!",
+      `Hello!\n\nThank you for signing up. We are excited to help you ace your interviews!\n\nBest,\nAI Interview Coach Team`
+    );
+
     res.json({ message: "User registered successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -105,6 +113,14 @@ app.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "1h" });
+
+    // Send Login Notification
+    await sendEmail(
+      email,
+      "New Login Detected",
+      `Hello!\n\nWe detected a new login to your account.\n\nTime: ${new Date().toLocaleString()}\n\nIf this wasn't you, please secure your account.`
+    );
+
     res.json({ token, email: user.email, role: user.role });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -112,18 +128,47 @@ app.post("/login", async (req, res) => {
 });
 
 // User Dashboard Data
+app.get("/my-interviews/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = await getDb();
+    const interview = await db.get(
+      "SELECT * FROM interviews WHERE id = ? AND user_id = ?",
+      [id, req.user.id]
+    );
+
+    if (!interview) {
+      return res.status(404).json({ error: "Interview not found" });
+    }
+
+    // Parse JSON fields
+    const parsedInterview = {
+      ...interview,
+      questions: JSON.parse(interview.questions || "[]"),
+      answers: JSON.parse(interview.answers || "[]"),
+      scores: JSON.parse(interview.scores || "[]")
+    };
+
+    res.json(parsedInterview);
+  } catch (err) {
+    console.error("FETCH INTERVIEW DETAILS ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/my-interviews", authenticateToken, async (req, res) => {
   try {
     const db = await getDb();
     const interviews = await db.all(
-      "SELECT id, role, date, scores FROM interviews WHERE user_id = ? ORDER BY date DESC",
+      "SELECT id, role, date, scores, questions FROM interviews WHERE user_id = ? ORDER BY date DESC",
       [req.user.id]
     );
 
     // Parse JSON fields for the frontend
     const parsedInterviews = interviews.map(i => ({
       ...i,
-      scores: JSON.parse(i.scores || "[]")
+      scores: JSON.parse(i.scores || "[]"),
+      questions: JSON.parse(i.questions || "[]")
     }));
 
     res.json(parsedInterviews);
@@ -143,7 +188,7 @@ app.get("/admin/all-interviews", authenticateToken, async (req, res) => {
     const db = await getDb();
     // Join with users table to get email
     const interviews = await db.all(`
-            SELECT i.id, i.role, i.date, i.scores, i.user_id, u.email 
+            SELECT i.id, i.role, i.date, i.scores, i.questions, i.user_id, u.email 
             FROM interviews i 
             JOIN users u ON i.user_id = u.id 
             ORDER BY i.date DESC
@@ -151,7 +196,8 @@ app.get("/admin/all-interviews", authenticateToken, async (req, res) => {
 
     const parsedInterviews = interviews.map(i => ({
       ...i,
-      scores: JSON.parse(i.scores || "[]")
+      scores: JSON.parse(i.scores || "[]"),
+      questions: JSON.parse(i.questions || "[]")
     }));
 
     res.json(parsedInterviews);
@@ -261,74 +307,71 @@ app.post("/start-interview", authenticateToken, async (req, res) => {
 
     const questionCount = req.body.questionCount || 3;
     const resumeContext = req.body.resumeContext || "";
+    // New: Check for manually passed questions (e.g. for Retake)
+    const passedQuestions = req.body.passedQuestions; // Array of strings
+    console.log("Received passedQuestions:", passedQuestions, "Type:", typeof passedQuestions, "Is Array:", Array.isArray(passedQuestions));
 
     // Create Metadata
     const interviewId = Date.now().toString();
     const db = await getDb();
 
-    // Use a valid model name
-    const model = "Qwen/Qwen2.5-72B-Instruct";
+    let questions = [];
 
-    const systemPrompt = "You are a professional interviewer.";
-
-    let userPrompt = `Ask exactly ${questionCount} short and to the point ${difficulty}-level interview questions for a ${role}.
-    Return only numbered questions.`;
-
-    if (resumeContext) {
-      console.log(`Generating tailored interview questions based on resume context (Length: ${resumeContext.length})...`);
-
-      userPrompt = `
-        You are an expert technical interviewer conducting a mock interview for the role of ${role}.
-        
-        CANDIDATE RESUME CONTENT:
-        """
-        ${resumeContext.slice(0, 4000)}
-        """
-        
-        INSTRUCTIONS:
-        1. Ask exactly ${questionCount} ${difficulty}-level interview questions.
-        2. CRITICAL: At least 50% of your questions MUST explicitly reference specific details found in the resume above.
-           - Example: "I see you worked on [Project Name], can you explain..."
-           - Example: "You listed [Skill] as a proficiency, how would you..."
-        3. Do not simply ask generic questions. Challenge the candidate on their stated experience.
-        4. If the resume is sparse, ask general questions relevant to ${role}, but prioritize resume-based questions.
-        
-        Return ONLY the numbered list of questions. Do not include any introductory text.
-        `;
+    if (passedQuestions && Array.isArray(passedQuestions) && passedQuestions.length > 0) {
+      console.log("Using passed questions for retake...");
+      questions = passedQuestions;
     } else {
-      console.log("No resume context provided, generating generic questions.");
-    }
+      // Use a valid model name
+      const model = "Qwen/Qwen2.5-72B-Instruct";
+      const systemPrompt = "You are a professional interviewer.";
 
-    console.log("Requesting interview questions from Hugging Face...");
-    let response;
-    try {
-      response = await hf.chatCompletion({
-        model: model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        max_tokens: 512,
-        temperature: 0.7
-      });
-      console.log("HF Response received");
-    } catch (apiError) {
-      console.error("HF API ERROR:", apiError);
-      return res.status(500).json({ error: "Failed to connect to AI service", details: apiError.message });
-    }
+      let userPrompt = `Ask exactly ${questionCount} short and to the point ${difficulty}-level interview questions for a ${role}.
+      Return only numbered questions.`;
 
-    if (!response || !response.choices || !response.choices[0]) {
-      console.error("Invalid HF Response:", JSON.stringify(response, null, 2));
-      return res.status(500).json({ error: "Invalid response from AI service" });
-    }
+      if (resumeContext) {
+        // ... (existing resume logic)
+        console.log(`Generating tailored interview questions based on resume context...`);
+        userPrompt = `
+          You are an expert technical interviewer conducting a mock interview for the role of ${role}.
+          CANDIDATE RESUME CONTENT:
+          """${resumeContext.slice(0, 4000)}"""
+          INSTRUCTIONS:
+          1. Ask exactly ${questionCount} ${difficulty}-level interview questions.
+          2. CRITICAL: At least 50%...
+          3. Do not simply ask generic questions.
+          4. If the resume is sparse, ask general questions relevant to ${role}.
+          Return ONLY the numbered list of questions.
+        `;
+      } else {
+        console.log("No resume context provided, generating generic questions.");
+      }
 
-    const text = response.choices[0].message.content;
+      console.log("Requesting interview questions from Hugging Face...");
+      let response;
+      try {
+        response = await hf.chatCompletion({
+          model: model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          max_tokens: 512,
+          temperature: 0.7
+        });
+      } catch (apiError) {
+        console.error("HF API ERROR:", apiError);
+        return res.status(500).json({ error: "Failed to connect to AI service", details: apiError.message });
+      }
 
-    if (!text) {
-      return res.status(500).json({ error: "AI did not return questions" });
-    }
+      if (!response || !response.choices || !response.choices[0]) {
+        return res.status(500).json({ error: "Invalid response from AI service" });
+      }
 
-    const questions = text.split("\n").map(q => q.trim()).filter(q => q.length > 0);
+      const text = response.choices[0].message.content;
+      if (!text) return res.status(500).json({ error: "AI did not return questions" });
+
+      questions = text.split("\n").map(q => q.trim()).filter(q => q.length > 0);
+    } // End else
 
     // Save initial interview state to DB
     await db.run(

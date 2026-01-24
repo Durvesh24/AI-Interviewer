@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - AI Interviewer</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Shared CSS only -->
     <style>
         /* Minimal layout override */
@@ -191,13 +193,15 @@
                 <h1>My Dashboard</h1>
                 <p>Track your interview performance</p>
             </div>
-            <a href="mock-interview.html" class="btn btn-primary" style="width: auto;">+ Start New Interview</a>
+            <a href="mock-interview.html" id="startInterviewBtn" class="btn btn-primary" style="width: auto;">+ Start
+                New Interview</a>
         </header>
 
         <section id="admin-section" class="hidden">
             <div class="admin-tabs">
-                <button class="tab-btn active" onclick="switchTab('interviews')">All Interviews</button>
-                <button class="tab-btn" onclick="switchTab('users')">User Management</button>
+                <button class="tab-btn active" onclick="switchTab('interviews')">Past Interviews</button>
+                <button class="tab-btn" onclick="switchTab('performance')">Performance Analytics</button>
+                <button id="admin-tab-btn" class="tab-btn hidden" onclick="switchTab('users')">User Management</button>
             </div>
         </section>
 
@@ -208,6 +212,17 @@
             </div>
             <div id="interview-list">
                 <div class="empty-state">Loading interviews...</div>
+            </div>
+        </section>
+
+        <!-- Performance Tab -->
+        <section id="performance-view" class="hidden">
+            <div class="interview-list-header">
+                <h3>Performance Analytics</h3>
+            </div>
+            <div class="card"
+                style="background: var(--card-bg); padding: 20px; border-radius: var(--radius); border: 1px solid var(--card-border);">
+                <canvas id="performanceChart"></canvas>
             </div>
         </section>
 
@@ -232,6 +247,19 @@
             </div>
             <div id="modalInterviewList">
                 <div class="empty-state">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interview Details Modal -->
+    <div id="interviewDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Interview Details</h2>
+                <button class="modal-close" onclick="closeDetailsModal()">&times;</button>
+            </div>
+            <div id="detailsContent">
+                <!-- Q&A will be injected here -->
             </div>
         </div>
     </div>
@@ -265,6 +293,10 @@
             document.querySelector('.welcome-text p').style.color = "#d1d5db";
 
             document.getElementById('admin-section').classList.remove('hidden');
+            document.getElementById('admin-tab-btn').classList.remove('hidden');
+
+            // Hide the Start Interview button for admins
+            document.getElementById('startInterviewBtn').style.display = 'none';
         }
 
         async function fetchInterviews() {
@@ -301,6 +333,11 @@
                     const deleteBtn = role === 'admin'
                         ? `<button class="btn-delete-interview" onclick="deleteInterview('${interview.id}')">Delete</button>` : '';
 
+                    // Add retake button only for regular users
+                    const retakeBtn = role !== 'admin'
+                        ? `<button class="btn-retake btn-edit" data-role="${interview.role}" data-questions='${JSON.stringify(interview.questions)}' style="padding: 6px 12px; border:none; border-radius:6px; cursor:pointer; background:rgba(16, 185, 129, 0.2); color:#6ee7b7;">Retake</button>`
+                        : '';
+
                     return `
                         <div class="interview-card" style="display: flex; justify-content: space-between; align-items: center; position: relative;">
                             <div style="flex: 1;">
@@ -310,10 +347,23 @@
                             </div>
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <div class="score-badge ${badgeClass}">Avg Score: ${avgScore} / 10</div>
+                                <button class="btn-edit" style="padding: 6px 12px; border:none; border-radius:6px; cursor:pointer;" onclick="viewInterviewDetails('${interview.id}')">View</button>
+                                ${retakeBtn}
                                 ${deleteBtn}
                             </div>
                         </div>`;
                 }).join('');
+
+                // Add event listeners to retake buttons
+                setTimeout(() => {
+                    document.querySelectorAll('.btn-retake').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const role = btn.getAttribute('data-role');
+                            const questions = JSON.parse(btn.getAttribute('data-questions'));
+                            retakeInterview(role, questions);
+                        });
+                    });
+                }, 0);
             } catch (err) {
                 console.error(err);
                 document.getElementById('interview-list').innerHTML = '<div class="empty-state">Failed to load.</div>';
@@ -389,13 +439,110 @@
             tabs.forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
 
+            document.getElementById('interviews-view').classList.add('hidden');
+            document.getElementById('users-view').classList.add('hidden');
+            document.getElementById('performance-view').classList.add('hidden');
+
             if (tab === 'interviews') {
                 document.getElementById('interviews-view').classList.remove('hidden');
-                document.getElementById('users-view').classList.add('hidden');
+            } else if (tab === 'performance') {
+                document.getElementById('performance-view').classList.remove('hidden');
+                renderAnalytics();
             } else {
-                document.getElementById('interviews-view').classList.add('hidden');
                 document.getElementById('users-view').classList.remove('hidden');
                 fetchUsers();
+            }
+        }
+
+        // --- Retake Logic ---
+        function retakeInterview(role, questions) {
+            // questions is already an array, no need to parse
+            console.log("Retake called with role:", role, "questions:", questions);
+            const dataToSave = { role, questions };
+            console.log("Saving to localStorage:", dataToSave);
+            localStorage.setItem('retakeData', JSON.stringify(dataToSave));
+            window.location.href = 'mock-interview.html';
+        }
+
+        // --- Analytics Logic ---
+        let chartInstance = null;
+        async function renderAnalytics() {
+            try {
+                let interviews = [];
+
+                if (role === 'admin') {
+                    // Admin: Fetch all interviews from all users
+                    const res = await fetch(`${API_BASE_URL}/admin/all-interviews`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    interviews = await res.json();
+                } else {
+                    // Regular user: Fetch only their interviews
+                    const res = await fetch(`${API_BASE_URL}/my-interviews`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    interviews = await res.json();
+                }
+
+                // Process Data: Sort by date ascending for chart
+                const sorted = interviews.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                const labels = sorted.map(i => {
+                    const date = new Date(i.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                    // For admin, add email to label
+                    return role === 'admin' && i.email ? `${date} (${i.email.split('@')[0]})` : date;
+                });
+
+                const scores = sorted.map(i => {
+                    const avg = i.scores.length ? (i.scores.reduce((a, b) => a + b, 0) / i.scores.length) : 0;
+                    return avg.toFixed(1);
+                });
+
+                const ctx = document.getElementById('performanceChart').getContext('2d');
+
+                if (chartInstance) chartInstance.destroy();
+
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: role === 'admin' ? 'All Users Average Score' : 'Your Average Score',
+                            data: scores,
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#ec4899'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 10,
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: '#9ca3af' }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    color: '#9ca3af',
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: { labels: { color: '#e5e7eb' } }
+                        }
+                    }
+                });
+
+            } catch (err) {
+                console.error("Analytics Error:", err);
             }
         }
 
@@ -470,6 +617,78 @@
         function closeUserModal() {
             document.getElementById('userInterviewModal').classList.remove('active');
         }
+
+        // --- Interview Details Logic ---
+        async function viewInterviewDetails(id) {
+            try {
+                const res = await fetch(`${API_BASE_URL}/my-interviews/${id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!res.ok) {
+                    alert("Failed to load details");
+                    return;
+                }
+
+                const data = await res.json();
+                const modal = document.getElementById('interviewDetailsModal');
+                const content = document.getElementById('detailsContent');
+
+                let html = `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: var(--primary-color);">${data.role}</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">
+                            Date: ${new Date(data.date).toLocaleString()}
+                        </p>
+                    </div>
+                `;
+
+                if (data.questions && data.questions.length > 0) {
+                    html += data.questions.map((q, index) => {
+                        const answer = data.answers[index] || "No answer provided";
+                        const score = data.scores[index] !== undefined ? data.scores[index] : "-";
+
+                        // Color code score
+                        let scoreColor = '#ef4444'; // red
+                        if (score >= 7) scoreColor = '#10b981'; // green
+                        else if (score >= 4) scoreColor = '#f59e0b'; // orange
+
+                        return `
+                            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                                <div style="margin-bottom: 8px; font-weight: 600; color: #e5e7eb;">
+                                    Q${index + 1}: ${q}
+                                </div>
+                                <div style="margin-bottom: 8px; color: #d1d5db; font-size: 0.95rem;">
+                                    <strong style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Your Answer:</strong><br>
+                                    ${answer}
+                                </div>
+                                <div style="font-size: 0.9rem; font-weight: 600; color: ${scoreColor};">
+                                    Score: ${score}/10
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    html += '<p>No questions recorded for this interview.</p>';
+                }
+
+                content.innerHTML = html;
+                modal.classList.add('active');
+
+            } catch (err) {
+                console.error(err);
+                alert("Error loading details");
+            }
+        }
+
+        function closeDetailsModal() {
+            document.getElementById('interviewDetailsModal').classList.remove('active');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('interviewDetailsModal').addEventListener('click', function (e) {
+            if (e.target === this) closeDetailsModal();
+        });
 
         // Close modal when clicking outside
         document.getElementById('userInterviewModal').addEventListener('click', function (e) {

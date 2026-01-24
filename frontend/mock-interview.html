@@ -126,9 +126,24 @@
 
         // Check for saved role from Resume Review and pre-fill
         window.addEventListener('load', () => {
-            const savedRole = localStorage.getItem('targetRole');
-            if (savedRole) {
-                document.getElementById("role").value = savedRole;
+            // Retake Logic
+            const retakeData = localStorage.getItem('retakeData');
+            if (retakeData) {
+                const { role, questions } = JSON.parse(retakeData);
+                document.getElementById("role").value = role;
+                if (questions && questions.length) {
+                    document.getElementById("questionCount").value = questions.length;
+                }
+
+                // Auto-start the interview immediately
+                setTimeout(() => {
+                    startInterview();
+                }, 100); // Small delay to ensure DOM is ready
+            } else {
+                const savedRole = localStorage.getItem('targetRole');
+                if (savedRole) {
+                    document.getElementById("role").value = savedRole;
+                }
             }
         });
 
@@ -157,26 +172,38 @@
             // Auto-fill role if empty and we have one saved
             const finalRole = role || savedRole;
 
+            // Retake Check - get it early before clearing
+            let passedQuestions = null;
+            const retakeData = localStorage.getItem('retakeData');
+            if (retakeData) {
+                const parsed = JSON.parse(retakeData);
+                passedQuestions = parsed.questions;
+                console.log("Using retake questions:", passedQuestions);
+            }
+
             try {
+                const requestBody = {
+                    role: finalRole || role,
+                    difficulty,
+                    questionCount,
+                    resumeContext: resumeContext,
+                    passedQuestions: passedQuestions // Send if exists
+                };
+                console.log("Sending to backend:", requestBody);
+
                 const res = await fetch(`${API_BASE_URL}/start-interview`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         "Authorization": `Bearer ${token}`
                     },
-                    body: JSON.stringify({
-                        role: finalRole || role,
-                        difficulty,
-                        questionCount,
-                        resumeContext: resumeContext
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 // Clear context after using it so it doesn't persist forever
-                if (resumeContext) {
-                    localStorage.removeItem('resumeContext');
-                    localStorage.removeItem('targetRole');
-                }
+                if (resumeContext) localStorage.removeItem('resumeContext');
+                if (savedRole) localStorage.removeItem('targetRole');
+                if (retakeData) localStorage.removeItem('retakeData'); // Clear passed questions
 
                 if (res.status === 401 || res.status === 403) {
                     alert("Session expired. Please login again.");
