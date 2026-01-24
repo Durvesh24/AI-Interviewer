@@ -350,6 +350,7 @@
         const API_BASE_URL = getApiBaseUrl();
 
         let currentUserData = null;
+        let userChartInstance = null;
 
         async function fetchUserDetails() {
             try {
@@ -433,7 +434,11 @@
             const sorted = [...interviews].sort((a, b) => new Date(a.date) - new Date(b.date));
             const ctx = document.getElementById('userPerformanceChart').getContext('2d');
 
-            new Chart(ctx, {
+            if (userChartInstance) {
+                userChartInstance.destroy();
+            }
+
+            userChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: sorted.map(i => new Date(i.date).toLocaleDateString()),
@@ -488,7 +493,8 @@
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (res.ok) fetchUserDetails();
+                if (res.ok) await fetchUserDetails();
+                else alert("Failed to delete interview");
             } catch (e) { alert("Delete failed"); }
         }
 
