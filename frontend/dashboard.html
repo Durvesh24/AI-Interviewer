@@ -219,6 +219,12 @@
         <section id="performance-view" class="hidden">
             <div class="interview-list-header">
                 <h3>Performance Analytics</h3>
+                <div id="admin-analytics-controls" class="hidden" style="margin-bottom: 15px;">
+                    <select id="adminUserAnalyticsSelect" onchange="renderAnalytics()"
+                        style="padding: 8px; border-radius: 6px; border: 1px solid var(--card-border); background: var(--card-bg); color: var(--text-color);">
+                        <option value="all">All Users (Aggregate)</option>
+                    </select>
+                </div>
             </div>
             <div class="card"
                 style="background: var(--card-bg); padding: 20px; border-radius: var(--radius); border: 1px solid var(--card-border);">
@@ -294,6 +300,10 @@
 
             document.getElementById('admin-section').classList.remove('hidden');
             document.getElementById('admin-tab-btn').classList.remove('hidden');
+            document.getElementById('admin-analytics-controls').classList.remove('hidden');
+
+            // fetch users to populate the dropdown
+            fetchUsersForDropdown();
 
             // Hide the Start Interview button for admins
             document.getElementById('startInterviewBtn').style.display = 'none';
@@ -405,6 +415,27 @@
             }
         }
 
+        async function fetchUsersForDropdown() {
+            if (role !== 'admin') return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const users = await res.json();
+
+                const select = document.getElementById('adminUserAnalyticsSelect');
+                // Keep the first option (All Users)
+                select.innerHTML = '<option value="all">All Users (Aggregate)</option>';
+
+                users.forEach(user => {
+                    const opt = document.createElement('option');
+                    opt.value = user.id;
+                    opt.innerText = `${user.email} (${user.role})`;
+                    select.appendChild(opt);
+                });
+            } catch (err) {
+                console.error("Failed to load users for dropdown", err);
+            }
+        }
+
         async function deleteUser(id) {
             if (!confirm("Are you sure? This will delete the user and all their data permanently.")) return;
             try {
@@ -471,11 +502,22 @@
                 let interviews = [];
 
                 if (role === 'admin') {
-                    // Admin: Fetch all interviews from all users
-                    const res = await fetch(`${API_BASE_URL}/admin/all-interviews`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    interviews = await res.json();
+                    const selectedUserId = document.getElementById('adminUserAnalyticsSelect').value;
+
+                    if (selectedUserId === 'all') {
+                        // Admin: Fetch all interviews from all users
+                        const res = await fetch(`${API_BASE_URL}/admin/all-interviews`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        interviews = await res.json();
+                    } else {
+                        // Admin: Fetch specific user interviews
+                        const res = await fetch(`${API_BASE_URL}/admin/users/${selectedUserId}/interviews`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        const data = await res.json();
+                        interviews = data.interviews; // The endpoint returns { user, interviews: [] }
+                    }
                 } else {
                     // Regular user: Fetch only their interviews
                     const res = await fetch(`${API_BASE_URL}/my-interviews`, {
@@ -507,7 +549,9 @@
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: role === 'admin' ? 'All Users Average Score' : 'Your Average Score',
+                            label: role === 'admin'
+                                ? (document.getElementById('adminUserAnalyticsSelect').value === 'all' ? 'All Users Average Score' : 'User Average Score')
+                                : 'Your Average Score',
                             data: scores,
                             borderColor: '#8b5cf6',
                             backgroundColor: 'rgba(139, 92, 246, 0.1)',
