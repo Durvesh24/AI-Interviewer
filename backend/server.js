@@ -269,13 +269,15 @@ app.get("/admin/users/:id/interviews", authenticateToken, async (req, res) => {
 
     // Get all interviews for this user
     const interviews = await db.all(
-      "SELECT id, role, date, scores FROM interviews WHERE user_id = ? ORDER BY date DESC",
+      "SELECT id, role, date, scores, questions, answers FROM interviews WHERE user_id = ? ORDER BY date DESC",
       [id]
     );
 
     const parsedInterviews = interviews.map(i => ({
       ...i,
-      scores: JSON.parse(i.scores || "[]")
+      scores: JSON.parse(i.scores || "[]"),
+      questions: JSON.parse(i.questions || "[]"),
+      answers: JSON.parse(i.answers || "[]")
     }));
 
     res.json({ user, interviews: parsedInterviews });

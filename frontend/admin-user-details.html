@@ -164,6 +164,64 @@
             align-items: center;
             z-index: 9999;
         }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            color: var(--primary-color);
+        }
     </style>
 </head>
 
@@ -254,6 +312,19 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interview Details Modal -->
+    <div id="interviewDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Interview Details</h2>
+                <button class="modal-close" onclick="closeDetailsModal()">&times;</button>
+            </div>
+            <div id="detailsContent">
+                <!-- Q&A will be injected here -->
             </div>
         </div>
     </div>
@@ -420,6 +491,48 @@
                 if (res.ok) fetchUserDetails();
             } catch (e) { alert("Delete failed"); }
         }
+
+        // --- Interview Details Logic ---
+        // Looking at server.js, /my-interviews/:id checks `WHERE id = ? AND user_id = ?` using req.user.id.
+        // So admins CANNOT use that endpoint to view other users' interviews.
+
+        // We need to use the data we already fetched in `currentUserData` to avoid a new call 
+        // OR created a new admin endpoint. 
+        // Luckily, we pulled ALL interview data in `fetchUserDetails()` including questions/answers/scores!
+
+        const interview = currentUserData.interviews.find(i => i.id === id);
+
+        if (!interview) {
+            alert("Interview details not found in loaded data.");
+            return;
+        }
+
+        const modal = document.getElementById('interviewDetailsModal');
+        const content = document.getElementById('detailsContent');
+
+        let html = `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: var(--primary-color);">${interview.role}</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">
+                            Date: ${new Date(interview.date).toLocaleString()}
+                        </p>
+                    </div>
+                `;
+
+                // The data from admin/users/:id/interviews is already parsed:
+                // scores: JSON.parse(i.scores || "[]") etc...
+                // Wait, checking server.js... 
+                // app.get("/admin/users/:id/interviews" ...)
+                // It parses scores. BUT it does NOT return questions or answers columns in the SELECT statement!
+                // line 269: "SELECT id, role, date, scores FROM interviews..."
+                // Oh no! The previous step missed fetching questions and answers for the admin view!
+                // I need to update the server to include those columns first.
+            } catch (err) {
+            console.error(err);
+            alert("Error loading details");
+        }
+        }
+
 
         function logout() {
             localStorage.clear();
