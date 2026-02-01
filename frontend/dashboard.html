@@ -282,9 +282,10 @@
 
         <section id="dashboard-nav">
             <div class="admin-tabs">
-                <button class="tab-btn active" onclick="switchTab('interviews')">Past Interviews</button>
-                <button id="analytics-tab" class="tab-btn" onclick="switchTab('performance')">Performance
+                <button class="tab-btn active" onclick="switchTab('interviews')">My Interviews</button>
+                <button id="resume-analytics-tab" class="tab-btn" onclick="switchTab('resume-reviews')">Resume
                     Analytics</button>
+                <button id="analytics-tab" class="tab-btn" onclick="switchTab('performance')">Performance Stats</button>
                 <button id="admin-tab-btn" class="tab-btn hidden" onclick="switchTab('users')">User Management</button>
             </div>
         </section>
@@ -292,10 +293,27 @@
         <!-- Interviews Tab -->
         <section id="interviews-view">
             <div class="interview-list-header">
-                <h3>Past Interviews</h3>
+                <h3>Practice Interviews</h3>
             </div>
-            <div id="interview-list">
-                <div class="empty-state">Loading interviews...</div>
+            <div id="practice-interview-list">
+                <div class="empty-state">Loading...</div>
+            </div>
+
+            <div class="interview-list-header" style="margin-top: 40px;">
+                <h3>Resume-Based Interviews</h3>
+            </div>
+            <div id="resume-interview-list">
+                <div class="empty-state">Loading...</div>
+            </div>
+        </section>
+
+        <!-- Resume Reviews Tab (New) -->
+        <section id="resume-reviews-view" class="hidden">
+            <div class="interview-list-header">
+                <h3>Resume Analysis History</h3>
+            </div>
+            <div id="resume-review-list">
+                <div class="empty-state">Loading resume history...</div>
             </div>
         </section>
 
@@ -369,6 +387,19 @@
         </div>
     </div>
 
+    <!-- Resume Details Modal -->
+    <div id="resumeDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Resume Analysis Details</h2>
+                <button class="modal-close" onclick="closeResumeDetailsModal()">&times;</button>
+            </div>
+            <div id="resumeDetailsContent" style="padding: 20px;">
+                <!-- Details injected here -->
+            </div>
+        </div>
+    </div>
+
     <!-- Change Role Modal -->
     <div id="changeRoleModal" class="modal">
         <div class="modal-content" style="max-width: 400px;">
@@ -435,14 +466,33 @@
                     calculateLearnerStats(data);
                 }
 
-                const list = document.getElementById('interview-list');
+                const practiceList = document.getElementById('practice-interview-list');
+                const resumeList = document.getElementById('resume-interview-list');
 
                 if (data.length === 0) {
-                    list.innerHTML = `<div class="empty-state"><p>No interviews found yet.</p></div>`;
+                    practiceList.innerHTML = `<div class="empty-state"><p>No interviews found yet.</p></div>`;
+                    resumeList.innerHTML = `<div class="empty-state"><p>No resume-based interviews found.</p></div>`;
                     return;
                 }
 
-                list.innerHTML = data.map(interview => {
+                const practiceInterviews = data.filter(i => !i.type || i.type === 'standard');
+                const resumeInterviews = data.filter(i => i.type === 'resume');
+
+                renderInterviewList(practiceInterviews, practiceList, "No standard practice interviews yet.");
+                renderInterviewList(resumeInterviews, resumeList, "No resume-based interviews yet.");
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderInterviewList(data, container, emptyMsg) {
+            try {
+                if (data.length === 0) {
+                    container.innerHTML = `<div class="empty-state"><p>${emptyMsg}</p></div>`;
+                    return;
+                }
+
+                container.innerHTML = data.map(interview => {
                     const date = new Date(interview.date).toLocaleDateString(undefined, {
                         year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                     });
@@ -494,7 +544,7 @@
                 }, 0);
             } catch (err) {
                 console.error(err);
-                document.getElementById('interview-list').innerHTML = '<div class="empty-state">Failed to load.</div>';
+                if (container) container.innerHTML = '<div class="empty-state">Failed to load interviews.</div>';
             }
         }
 
@@ -538,6 +588,116 @@
             }
         }
 
+
+        async function fetchResumeReviews() {
+            try {
+                const endpoint = role === 'admin' ? `${API_BASE_URL}/admin/all-resume-reviews` : `${API_BASE_URL}/my-resume-reviews`;
+                const res = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${token}` } });
+                const reviews = await res.json();
+
+                const list = document.getElementById('resume-review-list');
+                if (reviews.length === 0) {
+                    list.innerHTML = '<div class="empty-state">No resumes analyzed yet.</div>';
+                    return;
+                }
+
+                list.innerHTML = reviews.map(r => {
+                    const date = new Date(r.date).toLocaleDateString();
+
+                    // User label for admins
+                    const userEmail = role === 'admin' ? (r.email ? `<div style="font-size:0.8rem;color:var(--secondary-color);">${r.email}</div>` : '') : '';
+
+                    const pdfLink = r.file_path
+                        ? `<a href="/uploads/${r.file_path}" target="_blank" style="color:var(--primary-color);font-size:0.9rem;text-decoration:none;margin-left:10px;">View PDF</a>`
+                        : '';
+
+                    return `
+                    <div class="interview-card" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            ${userEmail}
+                            <div class="interview-role">${r.role}</div>
+                            <div class="interview-date">${date}</div>
+                        </div>
+                        <div style="text-align:right;">
+                             <div class="score-badge" style="color: ${r.ats_score >= 80 ? '#10b981' : r.ats_score >= 60 ? '#f59e0b' : '#ef4444'}">
+                                ATS: ${r.ats_score}
+                            </div>
+                            <div style="margin-top:5px;">
+                                ${pdfLink}
+                                <button onclick="viewResumeDetails('${r.id}')" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.9rem;">Details &rarr;</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                }).join('');
+
+            } catch (err) { console.error(err); }
+        }
+
+        async function viewResumeDetails(reviewId) {
+            try {
+                const res = await fetch(`${API_BASE_URL}/my-resume-reviews/${reviewId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const review = await res.json();
+
+                if (!res.ok) {
+                    alert('Failed to load resume details');
+                    return;
+                }
+
+                // Build modal content
+                const content = document.getElementById('resumeDetailsContent');
+                const data = review.data;
+
+                content.innerHTML = `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: var(--primary-color);">${review.role}</h3>
+                        <p style="color: var(--text-muted);">Analyzed on: ${new Date(review.date).toLocaleDateString()}</p>
+                    </div>
+
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <div class="score-badge ${review.ats_score >= 80 ? 'high' : review.ats_score >= 60 ? '' : 'low'}" style="font-size: 1.5rem; padding: 15px 30px;">
+                            ATS Score: ${review.ats_score}/100
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: var(--success-color); margin-bottom: 10px;">✅ Matched Keywords</h4>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            ${data.keywordsMatched.map(k => `<span class="keyword-badge matched">✓ ${k}</span>`).join('')}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: var(--error-color); margin-bottom: 10px;">⚠️ Missing Skills</h4>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            ${data.missingSkills.map(k => `<span class="keyword-badge missing">! ${k}</span>`).join('')}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 style="color: var(--text-color); margin-bottom: 10px;">📋 Formatting Issues</h4>
+                        <ul class="formatting-list">
+                            ${data.formattingIssues && data.formattingIssues.length > 0
+                        ? data.formattingIssues.map(i => `<li>${i}</li>`).join('')
+                        : '<li>✅ No major formatting issues detected.</li>'
+                    }
+                        </ul>
+                    </div>
+                `;
+
+                document.getElementById('resumeDetailsModal').classList.add('active');
+
+            } catch (err) {
+                console.error(err);
+                alert('Error loading resume details');
+            }
+        }
+
+        function closeResumeDetailsModal() {
+            document.getElementById('resumeDetailsModal').classList.remove('active');
+        }
 
         function calculateLearnerStats(interviews) {
             if (!interviews || interviews.length === 0) return;
@@ -635,18 +795,29 @@
 
         function switchTab(tab) {
             const tabs = document.querySelectorAll('.tab-btn');
+            // Hacky manual active state management strictly based on text content would be brittle
+            // Better to rely on the onclick order or data attributes. 
+            // Simplified: Removing 'active' from all, but how do we know which button was clicked? 
+            // The event target is the button.
+
             tabs.forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
+            if (event.target.classList.contains('tab-btn')) {
+                event.target.classList.add('active');
+            }
 
             document.getElementById('interviews-view').classList.add('hidden');
             document.getElementById('users-view').classList.add('hidden');
             document.getElementById('performance-view').classList.add('hidden');
+            document.getElementById('resume-reviews-view').classList.add('hidden');
 
             if (tab === 'interviews') {
                 document.getElementById('interviews-view').classList.remove('hidden');
+            } else if (tab === 'resume-reviews') {
+                document.getElementById('resume-reviews-view').classList.remove('hidden');
+                fetchResumeReviews();
             } else if (tab === 'performance') {
                 document.getElementById('performance-view').classList.remove('hidden');
-                if (role !== 'admin') renderAnalytics(); // Only render for non-admin on this tab
+                if (role !== 'admin') renderAnalytics();
             } else {
                 document.getElementById('users-view').classList.remove('hidden');
                 fetchUsers();

@@ -74,6 +74,16 @@
         mobileToggle.classList.toggle('active');
       });
     }
+
+    // Hide Resume Review feature for admins
+    const userRole = localStorage.getItem('userRole');
+    if (userRole === 'admin') {
+      const featureCards = document.querySelectorAll('.feature-card');
+      // The Resume Review card is the 3rd card (index 2)
+      if (featureCards[2]) {
+        featureCards[2].style.display = 'none';
+      }
+    }
   </script>
 
   <header class="hero-section">

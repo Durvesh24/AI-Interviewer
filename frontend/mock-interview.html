@@ -36,18 +36,18 @@
     <div class="app-container">
         <header class="app-header">
             <a href="index.html" class="back-link">← Back to Home</a>
-            <h1>Practice Questions</h1>
-            <p class="subtitle">Simulate a real interview experience</p>
+            <h1 id="pageTitle">Practice Questions</h1>
+            <p class="subtitle" id="pageSubtitle">Simulate a real interview experience</p>
         </header>
 
         <main class="main-content">
             <div class="card setup-card">
-                <div class="form-group">
+                <div class="form-group" id="roleContainer">
                     <label for="role">Target Role</label>
                     <input type="text" id="role" placeholder="e.g. Software Engineer Intern" class="input-field">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="difficultyContainer">
                     <label for="difficulty">Difficulty Level</label>
                     <select id="difficulty" class="select-field">
                         <option value="Beginner">Beginner</option>
@@ -144,14 +144,43 @@
                 if (savedRole) {
                     document.getElementById("role").value = savedRole;
                 }
+
+                // New: Check for resume context logic (hiding inputs)
+                const resumeContext = localStorage.getItem('resumeContext');
+                if (resumeContext) {
+                    // Hide Role and Difficulty inputs
+                    document.getElementById("roleContainer").style.display = 'none';
+                    document.getElementById("difficultyContainer").style.display = 'none';
+                    document.getElementById("pageTitle").innerText = "Resume-Based Interview";
+                    document.getElementById("pageSubtitle").innerText = `Practice questions tailored for ${savedRole || 'your resume'}`;
+                }
             }
         });
 
 
         async function startInterview() {
-            const role = document.getElementById("role").value;
-            const difficulty = document.getElementById("difficulty").value;
+            const roleInput = document.getElementById("role");
+            const difficultyInput = document.getElementById("difficulty");
+            let role = roleInput.value;
+            let difficulty = difficultyInput.value;
             const btn = document.querySelector(".setup-card .btn-primary");
+
+            const questionCountVal = document.getElementById("questionCount").value;
+            const questionCount = parseInt(questionCountVal) || 3;
+
+            // Check for resume context
+            const resumeContext = localStorage.getItem('resumeContext');
+            const savedRole = localStorage.getItem('targetRole');
+
+            // Determine Type
+            let type = "standard";
+            if (resumeContext) {
+                type = "resume";
+                // Ensure we use the saved role if the input is hidden/empty
+                role = savedRole || role;
+                // Default difficulty if hidden
+                difficulty = "Intermediate";
+            }
 
             if (!role) {
                 alert("Please enter a job role.");
@@ -162,15 +191,8 @@
             btn.disabled = true;
             btn.innerHTML = `<span class="spinner" style="width:20px;height:20px;border-width:2px;margin-right:8px;"></span> Setting up environment...`;
 
-            const questionCountVal = document.getElementById("questionCount").value;
-            const questionCount = parseInt(questionCountVal) || 3;
-
-            // Check for resume context
-            const resumeContext = localStorage.getItem('resumeContext');
-            const savedRole = localStorage.getItem('targetRole');
-
-            // Auto-fill role if empty and we have one saved
-            const finalRole = role || savedRole;
+            // Auto-fill role if empty and we have one saved (redundant check but safe)
+            const finalRole = role;
 
             // Retake Check - get it early before clearing
             let passedQuestions = null;
@@ -183,11 +205,12 @@
 
             try {
                 const requestBody = {
-                    role: finalRole || role,
+                    role: finalRole,
                     difficulty,
                     questionCount,
                     resumeContext: resumeContext,
-                    passedQuestions: passedQuestions // Send if exists
+                    passedQuestions: passedQuestions, // Send if exists
+                    type: type // Send type
                 };
                 console.log("Sending to backend:", requestBody);
 

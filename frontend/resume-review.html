@@ -112,7 +112,8 @@
                 <div style="text-align: center; margin-top: 3rem; display: flex; gap: 1rem; justify-content: center;">
                     <button onclick="location.reload()" class="btn btn-secondary" style="width: auto;">Analyze
                         Another</button>
-                    <a href="mock-interview.html" class="btn btn-primary" style="width: auto;">Practice Interview</a>
+                    <button onclick="startResumeInterview()" class="btn btn-primary" style="width: auto;">🎯 Start
+                        Resume Interview</button>
                 </div>
             </div>
         </main>
@@ -197,7 +198,27 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error(await response.text());
+                    let errorMessage = 'Analysis failed';
+                    const errorText = await response.text();
+
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        console.error('Backend error:', errorData);
+
+                        if (errorData.suggestion) {
+                            errorMessage = errorData.suggestion;
+                        } else if (errorData.error) {
+                            errorMessage = errorData.error;
+                        }
+
+                        if (errorData.lastErrorMessage && !errorMessage.includes(errorData.lastErrorMessage)) {
+                            errorMessage += '\n\nTechnical details: ' + errorData.lastErrorMessage;
+                        }
+                    } catch (parseError) {
+                        // Not JSON, use the raw text
+                        errorMessage = errorText || response.statusText;
+                    }
+                    throw new Error(errorMessage);
                 }
 
                 const data = await response.json();
@@ -211,8 +232,12 @@
                 displayResults(data);
 
             } catch (err) {
-                console.error(err);
-                alert('Analysis failed: ' + err.message);
+                console.error('Analysis error:', err);
+
+                // Show more user-friendly error with details
+                const errorMsg = err.message || 'Unknown error occurred';
+                alert('Resume Analysis Failed\n\n' + errorMsg);
+
                 document.getElementById('uploadCard').style.display = 'block';
                 document.getElementById('loading').style.display = 'none';
             }
@@ -267,6 +292,20 @@
             } else {
                 formattingList.innerHTML = '<li>✅ No major formatting issues detected.</li>';
             }
+        }
+
+        function startResumeInterview() {
+            // Resume context and role should already be in localStorage from analysis
+            const resumeContext = localStorage.getItem('resumeContext');
+            const targetRole = localStorage.getItem('targetRole');
+
+            if (!resumeContext) {
+                alert('Resume data not found. Please analyze your resume first.');
+                return;
+            }
+
+            // Navigate to mock interview page - it will detect resume context automatically
+            window.location.href = 'mock-interview.html';
         }
 
         function logout() {
