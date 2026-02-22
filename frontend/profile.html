@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - AI Interview Coach</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script>
+        if (!sessionStorage.getItem('token')) { window.location.href = 'login.html'; }
+    </script>
+    <style>
+        .danger-zone {
+            border: 1px solid #EF4444;
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+        }
+
+        .danger-zone h4 {
+            color: #EF4444;
+            margin-bottom: 0.5rem;
+        }
+
+        .section-divider {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <span style="font-size: 2rem;">🤖</span>
+                <span>AI Interview Coach</span>
+            </a>
+            <button class="mobile-toggle" aria-label="Toggle Menu">
+                <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            </button>
+            <div class="nav-links">
+                <a href="index.html#features" class="nav-link">Features</a>
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a href="index.html#about" class="nav-link">About</a>
+                <a href="index.html#contact" class="nav-link">Contact</a>
+                <a href="profile.html" class="nav-link" style="display: flex; align-items: center; gap: 0.25rem;">
+                    <span style="font-size: 1.2rem;">👤</span>
+                </a>
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle Dark Mode"><span>🌙</span></button>
+                <button onclick="logout()" class="btn btn-secondary"
+                    style="padding: 0.4rem 0.8rem; font-size: 0.85rem; margin-left: 0.5rem;">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="app-container" style="flex: 1; margin-top: 2rem; margin-bottom: 2rem;">
+        <header class="text-center mb-4">
+            <h1>👤 My Profile</h1>
+            <p style="color: var(--text-muted);">Manage your account settings.</p>
+        </header>
+
+        <main
+            style="max-width: 650px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 1.5rem;">
+
+            <!-- Account Info -->
+            <div class="card">
+                <h3 style="margin-bottom: 1.5rem;">Account Info</h3>
+                <div id="readonlyInfo" style="margin-bottom: 1.5rem;">
+                    <div class="info-row"><span class="info-label">Role</span><span id="infoRole">—</span></div>
+                    <div class="info-row"><span class="info-label">Last Login</span><span id="infoLastLogin">—</span>
+                    </div>
+                </div>
+
+                <form id="profileForm">
+                    <div class="form-group">
+                        <label for="profileName">Display Name</label>
+                        <input type="text" id="profileName" class="input-field" placeholder="Your Name">
+                    </div>
+                    <div class="form-group">
+                        <label for="profileEmail">Email Address</label>
+                        <input type="email" id="profileEmail" class="input-field" placeholder="you@example.com"
+                            required>
+                    </div>
+                    <button type="submit" id="saveProfileBtn" class="btn btn-primary">Save Changes</button>
+                </form>
+            </div>
+
+            <!-- Change Password -->
+            <div class="card">
+                <h3 style="margin-bottom: 1.5rem;">🔑 Change Password</h3>
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label for="currentPassword">Current Password</label>
+                        <input type="password" id="currentPassword" class="input-field" placeholder="••••••••" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">New Password</label>
+                        <input type="password" id="newPassword" class="input-field" placeholder="Min. 6 characters"
+                            minlength="6" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmNewPassword">Confirm New Password</label>
+                        <input type="password" id="confirmNewPassword" class="input-field" placeholder="••••••••"
+                            required>
+                    </div>
+                    <button type="submit" id="changePasswordBtn" class="btn btn-secondary">Update Password</button>
+                </form>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="card danger-zone">
+                <h4>⚠️ Danger Zone</h4>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">Permanently delete your
+                    account and all associated data. This cannot be undone.</p>
+                <button id="deleteAccountBtn" class="btn"
+                    style="background: #EF4444; color: white; border: none;">Delete My Account</button>
+
+                <!-- Delete Confirmation (hidden by default) -->
+                <div id="deleteConfirmSection"
+                    style="display: none; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed #EF4444;">
+                    <p style="color: #EF4444; font-weight: 600; margin-bottom: 0.75rem;">Enter your password to confirm
+                        deletion:</p>
+                    <div class="form-group">
+                        <input type="password" id="deletePassword" class="input-field" placeholder="Your password">
+                    </div>
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button id="confirmDeleteBtn" class="btn"
+                            style="background: #EF4444; color: white; border: none;">Yes, Delete Everything</button>
+                        <button onclick="document.getElementById('deleteConfirmSection').style.display='none'"
+                            class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script>
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : '';
+        const token = sessionStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+        // Load profile on page load
+        async function loadProfile() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/profile`, { headers });
+                const user = await res.json();
+                if (!res.ok) throw new Error(user.error);
+
+                document.getElementById('profileName').value = user.name || '';
+                document.getElementById('profileEmail').value = user.email || '';
+                document.getElementById('infoRole').textContent = user.role === 'admin' ? '👑 Admin' : '👤 User';
+                document.getElementById('infoLastLogin').textContent = user.last_login ? new Date(user.last_login).toLocaleString() : 'Never';
+            } catch (e) {
+                showToast('Failed to load profile: ' + e.message, 'error');
+            }
+        }
+        loadProfile();
+
+        // Update profile
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('saveProfileBtn');
+            btn.disabled = true; btn.innerText = 'Saving...';
+            try {
+                const res = await fetch(`${API_BASE_URL}/profile`, {
+                    method: 'PUT', headers,
+                    body: JSON.stringify({
+                        name: document.getElementById('profileName').value,
+                        email: document.getElementById('profileEmail').value
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                // Update stored email
+                sessionStorage.setItem('userEmail', document.getElementById('profileEmail').value);
+                showToast('Profile updated!', 'success');
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                btn.disabled = false; btn.innerText = 'Save Changes';
+            }
+        });
+
+        // Change password
+        document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newPwd = document.getElementById('newPassword').value;
+            const confirm = document.getElementById('confirmNewPassword').value;
+            if (newPwd !== confirm) { showToast('New passwords do not match.', 'error'); return; }
+
+            const btn = document.getElementById('changePasswordBtn');
+            btn.disabled = true; btn.innerText = 'Updating...';
+            try {
+                const res = await fetch(`${API_BASE_URL}/change-password`, {
+                    method: 'PUT', headers,
+                    body: JSON.stringify({
+                        currentPassword: document.getElementById('currentPassword').value,
+                        newPassword: newPwd
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                showToast('Password changed successfully!', 'success');
+                document.getElementById('changePasswordForm').reset();
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                btn.disabled = false; btn.innerText = 'Update Password';
+            }
+        });
+
+        // Delete account toggle
+        document.getElementById('deleteAccountBtn').addEventListener('click', () => {
+            document.getElementById('deleteConfirmSection').style.display = 'block';
+        });
+
+        // Confirm delete
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+            const password = document.getElementById('deletePassword').value;
+            if (!password) { showToast('Please enter your password.', 'error'); return; }
+
+            const btn = document.getElementById('confirmDeleteBtn');
+            btn.disabled = true; btn.innerText = 'Deleting...';
+            try {
+                const res = await fetch(`${API_BASE_URL}/account`, {
+                    method: 'DELETE', headers,
+                    body: JSON.stringify({ password })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+
+                showToast('Account deleted. Goodbye!', 'success');
+                setTimeout(() => {
+                    sessionStorage.clear();
+                    window.location.href = 'index.html';
+                }, 1500);
+            } catch (err) {
+                showToast(err.message, 'error');
+                btn.disabled = false; btn.innerText = 'Yes, Delete Everything';
+            }
+        });
+    </script>
+</body>
+
+</html>

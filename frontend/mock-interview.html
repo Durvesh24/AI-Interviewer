@@ -9,45 +9,63 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Link CSS -->
     <link rel="stylesheet" href="style.css">
 
-    <!-- Auth check BEFORE body renders to prevent flicker -->
+    <!-- Auth check BEFORE body renders -->
     <script>
-        // Hide body initially
-        document.documentElement.style.visibility = 'hidden';
-
-        // Check auth immediately
-        var token = localStorage.getItem('token');
-        if (!token) {
-            // Redirect before page becomes visible
+        if (!sessionStorage.getItem('token')) {
             window.location.href = 'login.html';
-        } else {
-            // Auth passed, show page
-            document.documentElement.style.visibility = 'visible';
         }
     </script>
 </head>
 
 <body>
 
-    <div class="app-container">
-        <header class="app-header">
-            <a href="index.html" class="back-link">← Back to Home</a>
-            <h1>Practice Questions</h1>
-            <p class="subtitle">Simulate a real interview experience</p>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <span style="font-size: 2rem;">🤖</span>
+                <span>AI Interview Coach</span>
+            </a>
+
+            <button class="mobile-toggle" aria-label="Toggle Menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </button>
+
+            <div class="nav-links">
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a href="index.html#features" class="nav-link">Features</a>
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle Dark Mode">
+                    <span>🌙</span>
+                </button>
+                <button onclick="logout()" class="btn btn-secondary"
+                    style="padding: 0.5rem 1rem; font-size: 0.9rem;">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="app-container" style="flex: 1; margin-top: 2rem; margin-bottom: 2rem;">
+        <header class="text-center mb-4">
+            <h1 id="pageTitle">Practice Questions</h1>
+            <p id="pageSubtitle" style="color: var(--text-muted);">Simulate a real interview experience tailored to your
+                role.</p>
         </header>
 
-        <main class="main-content">
+        <main style="max-width: 800px; margin: 0 auto; width: 100%;">
+
+            <!-- Setup Card -->
             <div class="card setup-card">
-                <div class="form-group">
+                <div class="form-group" id="roleContainer">
                     <label for="role">Target Role</label>
                     <input type="text" id="role" placeholder="e.g. Software Engineer Intern" class="input-field">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="difficultyContainer">
                     <label for="difficulty">Difficulty Level</label>
                     <select id="difficulty" class="select-field">
                         <option value="Beginner">Beginner</option>
@@ -61,278 +79,254 @@
                     <input type="number" id="questionCount" min="1" max="10" value="3" class="input-field">
                 </div>
 
-                <button onclick="startInterview()" class="btn btn-primary">🚀 Start Your Session</button>
+                <button onclick="startInterview()" class="btn btn-primary" style="width: 100%;">🚀 Start
+                    Session</button>
             </div>
 
             <!-- Question Area -->
             <div id="questionBox" class="card question-card hidden">
-                <div class="progress-section">
-                    <div id="progressText" class="progress-text">Question 1</div>
-                    <div class="progress-container">
-                        <div id="progressBar" class="progress-bar"></div>
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span id="progressText" style="font-weight: 600; color: var(--primary);">Question 1</span>
+                    </div>
+                    <div
+                        style="background: rgba(128,128,128,0.2); height: 8px; border-radius: var(--radius-full); overflow: hidden;">
+                        <div id="progressBar"
+                            style="width: 0%; height: 100%; background: var(--primary); transition: width 0.5s ease;">
+                        </div>
                     </div>
                 </div>
 
-                <h3 class="section-title" style="margin-top: 20px;">Current Challenge</h3>
-                <p class="question-text" id="questionText"></p>
+                <h3 style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                    Current Challenge
+                    <button onclick="speakText(document.getElementById('questionText').innerText, this)"
+                        class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">🔊 Read
+                        Question</button>
+                </h3>
+                <div id="questionText"
+                    style="font-size: 1.25rem; font-weight: 500; margin-bottom: 1.5rem; line-height: 1.6;"></div>
+
                 <textarea id="answer" class="textarea-field"
                     placeholder="Type your confident answer here..."></textarea>
-                <button onclick="submitAnswer()" class="btn btn-success" id="submitBtn">Submit Answer</button>
 
-                <div id="loading" class="loading-container" style="display:none; margin-top:20px; text-align:center;">
-                    <br>
+                <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                    <!-- Voice Input -->
+                    <button id="micBtn" onclick="toggleVoiceInput(this, 'answer')" class="btn btn-secondary"
+                        style="border-color: var(--primary); color: var(--primary);">
+                        🎤 Speak Answer
+                    </button>
+                    <button onclick="submitAnswer()" class="btn btn-primary" id="submitBtn">Submit Answer</button>
+                </div>
+
+                <div id="loading" style="display:none; margin-top:20px; text-align:center;">
                     <div class="spinner"></div>
-                    <span style="color:var(--secondary-color); font-weight:600;">Analysing your brilliance...</span>
+                    <p style="margin-top: 10px; color: var(--text-muted);">Analyzing your response...</p>
                 </div>
             </div>
 
             <!-- Feedback -->
-            <div id="feedbackBox" class="card feedback-card hidden-empty"></div>
+            <div id="feedbackBox" class="card hidden" style="margin-top: 1.5rem; border-left: 4px solid var(--accent);">
+            </div>
 
             <!-- Final Summary -->
-            <div id="summaryBox" class="card summary-card hidden">
-                <h3>🎉 Stats Sheet</h3>
-                <p id="finalScore" style="font-size:1.5rem; font-weight:bold;"></p>
-                <p id="finalVerdict" style="color:var(--text-muted); margin-top: 15px;"></p>
+            <div id="summaryBox" class="card hidden text-center">
+                <h3>🎉 Session Complete!</h3>
+                <div id="finalScore" style="font-size: 2rem; font-weight: 800; color: var(--primary); margin: 1rem 0;">
+                </div>
+                <p id="finalVerdict" style="color: var(--text-muted); padding: 0 1rem;"></p>
+                <div style="margin-top: 2rem;">
+                    <a href="dashboard.html" class="btn btn-secondary">Go to Dashboard</a>
+                </div>
             </div>
 
-            <!-- Ideal Answers: Hidden until interview is complete -->
-            <div class="ideal-answers-section hidden">
-                <button onclick="getIdealAnswers()" class="btn btn-secondary" style="margin-top:20px;">View Ideal
-                    Answers (10/10)</button>
-                <div id="comparisonBox" class="card ideal-answers-card hidden-empty" style="margin-top:20px;"></div>
+            <!-- Ideal Answers -->
+            <div class="ideal-answers-section hidden" style="margin-top: 2rem; text-align: center;">
+                <button onclick="getIdealAnswers()" class="btn btn-secondary">View Ideal Answers</button>
+                <div id="comparisonBox" class="card hidden" style="margin-top:1.5rem; text-align: left;"></div>
             </div>
+
         </main>
     </div>
 
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-grid">
+            <div class="footer-col">
+                <div class="logo" style="margin-bottom: 1rem;">🤖 AI Interview Coach</div>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="index.html">Home</a>
+            </div>
+            <div class="footer-col">
+                <p>&copy; <span id="currentYear"></span></p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Main JS -->
+    <script src="js/main.js"></script>
+    <script src="js/voice-interview.js"></script>
+
     <script>
-        // Auth check already done in <head>, token is available
-        // const token = localStorage.getItem('token'); // Removed to avoid redeclaration error
+        // Copied Logic from original mock-interview.html but cleaned up
+        // Note: API_BASE_URL resolution is better handled centrally or relatively if proxying, 
+        // but keeping it here for continuity.
 
         let interviewId = "";
         let questions = [];
         let currentQuestion = 0;
         let userAnswers = [];
+        const token = sessionStorage.getItem('token');
 
         const getApiBaseUrl = () => {
             const h = window.location.hostname;
-            const p = window.location.protocol;
-            if (p === 'file:' || h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.')) {
-                return 'http://localhost:5000';
-            }
+            if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:5000';
             return '';
         };
         const API_BASE_URL = getApiBaseUrl();
 
-        // Check for saved role from Resume Review and pre-fill
         window.addEventListener('load', () => {
-            // Retake Logic
-            const retakeData = localStorage.getItem('retakeData');
+            const retakeData = sessionStorage.getItem('retakeData');
             if (retakeData) {
                 const { role, questions } = JSON.parse(retakeData);
                 document.getElementById("role").value = role;
-                if (questions && questions.length) {
-                    document.getElementById("questionCount").value = questions.length;
-                }
-
-                // Auto-start the interview immediately
-                setTimeout(() => {
-                    startInterview();
-                }, 100); // Small delay to ensure DOM is ready
+                if (questions && questions.length) document.getElementById("questionCount").value = questions.length;
+                setTimeout(startInterview, 100);
             } else {
-                const savedRole = localStorage.getItem('targetRole');
-                if (savedRole) {
-                    document.getElementById("role").value = savedRole;
+                const savedRole = sessionStorage.getItem('targetRole');
+                if (savedRole) document.getElementById("role").value = savedRole;
+
+                const resumeContext = sessionStorage.getItem('resumeContext');
+                if (resumeContext) {
+                    document.getElementById("roleContainer").style.display = 'none';
+                    document.getElementById("difficultyContainer").style.display = 'none';
+                    document.getElementById("pageTitle").innerText = "Resume Analysis";
+                    document.getElementById("pageSubtitle").innerText = `Deep dive into questions based on your resume.`;
                 }
             }
         });
 
-
         async function startInterview() {
-            const role = document.getElementById("role").value;
-            const difficulty = document.getElementById("difficulty").value;
+            const roleInput = document.getElementById("role");
+            const difficultyInput = document.getElementById("difficulty");
+            let role = roleInput.value;
+            let difficulty = difficultyInput.value;
             const btn = document.querySelector(".setup-card .btn-primary");
+            const questionCount = parseInt(document.getElementById("questionCount").value) || 3;
 
-            if (!role) {
-                alert("Please enter a job role.");
-                return;
+            const resumeContext = sessionStorage.getItem('resumeContext');
+            const savedRole = sessionStorage.getItem('targetRole');
+            let type = "standard";
+
+            if (resumeContext) {
+                type = "resume";
+                role = savedRole || role;
+                difficulty = "Intermediate";
             }
 
-            // Loading State
+            if (!role) { showToast("Please enter a job role.", 'error'); return; }
+
+            // Loading
             btn.disabled = true;
-            btn.innerHTML = `<span class="spinner" style="width:20px;height:20px;border-width:2px;margin-right:8px;"></span> Setting up environment...`;
+            btn.innerHTML = `<span class="spinner" style="width:16px;height:16px;"></span> Setting up...`;
 
-            const questionCountVal = document.getElementById("questionCount").value;
-            const questionCount = parseInt(questionCountVal) || 3;
-
-            // Check for resume context
-            const resumeContext = localStorage.getItem('resumeContext');
-            const savedRole = localStorage.getItem('targetRole');
-
-            // Auto-fill role if empty and we have one saved
-            const finalRole = role || savedRole;
-
-            // Retake Check - get it early before clearing
+            // Retake Check
             let passedQuestions = null;
-            const retakeData = localStorage.getItem('retakeData');
-            if (retakeData) {
-                const parsed = JSON.parse(retakeData);
-                passedQuestions = parsed.questions;
-                console.log("Using retake questions:", passedQuestions);
-            }
+            const retakeData = sessionStorage.getItem('retakeData');
+            if (retakeData) passedQuestions = JSON.parse(retakeData).questions;
 
             try {
-                const requestBody = {
-                    role: finalRole || role,
-                    difficulty,
-                    questionCount,
-                    resumeContext: resumeContext,
-                    passedQuestions: passedQuestions // Send if exists
-                };
-                console.log("Sending to backend:", requestBody);
-
                 const res = await fetch(`${API_BASE_URL}/start-interview`, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    },
-                    body: JSON.stringify(requestBody)
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                    body: JSON.stringify({ role, difficulty, questionCount, resumeContext, passedQuestions, type })
                 });
 
-                // Clear context after using it so it doesn't persist forever
-                if (resumeContext) localStorage.removeItem('resumeContext');
-                if (savedRole) localStorage.removeItem('targetRole');
-                if (retakeData) localStorage.removeItem('retakeData'); // Clear passed questions
+                // Cleanup
+                if (resumeContext) sessionStorage.removeItem('resumeContext');
+                if (savedRole) sessionStorage.removeItem('targetRole');
+                if (retakeData) sessionStorage.removeItem('retakeData');
 
-                if (res.status === 401 || res.status === 403) {
-                    alert("Session expired. Please login again.");
-                    window.location.href = 'login.html';
-                    return;
-                }
+                if (res.status === 401) { logout(); return; }
 
                 const data = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(data.error || `Server returned ${res.status}`);
-                }
+                if (!res.ok) throw new Error(data.error || "Server error");
 
                 interviewId = data.interviewId;
                 questions = data.questions;
                 currentQuestion = 0;
 
                 document.getElementById("questionBox").classList.remove("hidden");
-                document.querySelector(".setup-card").classList.add("hidden"); // Hide setup card
-
-                // Scroll to question box
+                document.querySelector(".setup-card").classList.add("hidden");
                 document.getElementById("questionBox").scrollIntoView({ behavior: 'smooth' });
                 showQuestion();
+
             } catch (error) {
-                console.error("Error starting interview:", error);
-                let msg = "Failed to start interview.";
-                if (error.message.includes("Failed to fetch")) {
-                    msg += " The backend server seems to be offline. Please run 'npm start' in the backend folder.";
-                } else {
-                    msg += " " + error.message;
-                }
-                alert(msg);
+                console.error(error);
+                showToast(error.message, 'error');
                 btn.disabled = false;
-                btn.innerText = "🚀 Start Your Session";
+                btn.innerText = "🚀 Start Session";
             }
         }
 
         function showQuestion() {
-            document.getElementById("questionText").innerText =
-                questions[currentQuestion];
-
+            document.getElementById("questionText").innerText = questions[currentQuestion];
             document.getElementById("answer").value = "";
+            document.getElementById("feedbackBox").classList.add("hidden");
+            document.getElementById("loading").style.display = "none";
 
-            // Hide feedback
-            const feedbackBox = document.getElementById("feedbackBox");
-            feedbackBox.innerText = "";
-            feedbackBox.classList.add("hidden-empty");
-
-            // 🔴 ALWAYS hide loading when showing a question
-            const loading = document.getElementById("loading");
-            loading.style.display = "none";
-
-            // Progress update
-            const progressPercent =
-                ((currentQuestion + 1) / questions.length) * 100;
-
-            document.getElementById("progressBar").style.width =
-                progressPercent + "%";
-
-            document.getElementById("progressText").innerText =
-                `Question ${currentQuestion + 1} of ${questions.length}`;
+            const progress = ((currentQuestion + 1) / questions.length) * 100;
+            document.getElementById("progressBar").style.width = `${progress}%`;
+            document.getElementById("progressText").innerText = `Question ${currentQuestion + 1} of ${questions.length}`;
         }
 
         async function submitAnswer() {
             const answer = document.getElementById("answer").value;
-            const submitBtn = document.getElementById("submitBtn");
+            const btn = document.getElementById("submitBtn");
 
-            if (!answer.trim()) {
-                alert("Please type an answer.");
-                return;
-            }
+            if (!answer.trim()) { showToast("Please type an answer.", 'error'); return; }
 
             const loading = document.getElementById("loading");
-            submitBtn.disabled = true;
-            submitBtn.innerText = "Evaluating...";
-            loading.style.display = "flex";
+            btn.disabled = true;
+            loading.style.display = "block";
 
             try {
                 const res = await fetch(`${API_BASE_URL}/answer`, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        interviewId,
-                        question: questions[currentQuestion],
-                        answer
-                    })
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                    body: JSON.stringify({ interviewId, question: questions[currentQuestion], answer })
                 });
 
                 const data = await res.json();
                 userAnswers.push(answer);
-
                 loading.style.display = "none";
-                submitBtn.innerText = "Submit Answer";
+                btn.disabled = false;
 
-                // Show feedback
-                const feedbackBox = document.getElementById("feedbackBox");
-                feedbackBox.innerHTML = `<strong>Feedback:</strong> ${data.feedback}`;
-                feedbackBox.classList.remove("hidden-empty");
-                feedbackBox.scrollIntoView({ behavior: "smooth" });
+                const fb = document.getElementById("feedbackBox");
+                fb.innerHTML = `<strong>Feedback:</strong> ${data.feedback}`;
+                fb.classList.remove("hidden");
+                fb.scrollIntoView({ behavior: "smooth" });
 
                 currentQuestion++;
-
                 if (currentQuestion < questions.length) {
                     setTimeout(() => {
-                        submitBtn.disabled = false;
                         showQuestion();
+                        fb.classList.add("hidden");
                     }, 4000);
                 } else {
-                    // Last Question Logic: Show feedback for 4s, then hide both question and feedback together
                     setTimeout(() => {
-                        document.getElementById("progressBar").style.width = "100%";
                         document.getElementById("questionBox").classList.add("hidden");
-                        feedbackBox.innerHTML = '';
-                        feedbackBox.classList.add("hidden-empty");
+                        fb.classList.add("hidden");
                         getSummary();
-                        // Reveal Ideal Answers Section
                         document.querySelector(".ideal-answers-section").classList.remove("hidden");
                     }, 4000);
                 }
-
-            } catch (error) {
+            } catch (e) {
                 loading.style.display = "none";
-                submitBtn.disabled = false;
-                submitBtn.innerText = "Submit Answer";
-                console.error("Error submitting answer:", error);
-                alert("Error submitting answer: " + error.message);
+                btn.disabled = false;
+                showToast("Error submitting answer", 'error');
             }
         }
 
@@ -340,103 +334,49 @@
             try {
                 const res = await fetch(`${API_BASE_URL}/interview-summary`, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    },
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                     body: JSON.stringify({ interviewId })
                 });
-
                 const data = await res.json();
-
-                document.getElementById("finalScore").innerText =
-                    `⭐ Average Score: ${data.averageScore} / 10`;
-
-                document.getElementById("finalVerdict").innerText =
-                    `🧠 Verdict: ${data.verdict}`;
-
-                // Fix visibility logic: use hidden class instead of hidden-empty
+                document.getElementById("finalScore").innerText = `${data.averageScore} / 10`;
+                document.getElementById("finalVerdict").innerText = data.verdict;
                 document.getElementById("summaryBox").classList.remove("hidden");
-                document.getElementById("summaryBox").scrollIntoView({ behavior: "smooth" });
-
-            } catch (error) {
-                console.error("Error getting summary:", error);
-                alert("Failed to get summary: " + error.message);
-            }
+            } catch (e) { console.error(e); }
         }
 
         async function getIdealAnswers() {
-            const btn = document.querySelector(".ideal-answers-section .btn-secondary");
-            const originalText = btn.innerText;
-
-            // Loading State
-            btn.disabled = true;
-            btn.innerHTML = `<span class="spinner" style="width:16px;height:16px;border-width:2px;margin-right:8px;"></span> Fetching expert solutions...`;
-
             try {
                 const res = await fetch(`${API_BASE_URL}/ideal-answers`, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    },
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                     body: JSON.stringify({ interviewId })
                 });
-
                 const data = await res.json();
                 const box = document.getElementById("comparisonBox");
 
-                // Restore Button
-                btn.disabled = false;
-                btn.innerText = originalText;
-
-                if (data.error) {
-                    box.innerText = data.error;
-                    box.classList.remove("hidden-empty");
-                    return;
-                }
-
-                box.innerHTML = "<h3>Answer Comparison</h3>";
-
-                data.idealAnswers.forEach((item, index) => {
-                    box.innerHTML += `
-                    <div class="comparison-item">
-                        <div class="comparison-title">Question ${index + 1}: ${item.question}</div>
-                        <div class="comparison-grid">
-                            <div class="user-answer">
-                                <strong>Your Answer</strong>
-                                <div>${userAnswers[index] || "<em>No answer provided</em>"}</div>
-                            </div>
-                            <div class="ideal-answer">
-                                <strong>Ideal Answer (10/10)</strong>
-                                <div>${item.idealAnswer}</div>
+                let html = "";
+                data.idealAnswers.forEach((item, i) => {
+                    html += `
+                        <div style="margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+                            <h4 style="color: var(--primary);">Q${i + 1}: ${item.question}</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div style="background: rgba(0,0,0,0.1); padding: 1rem; border-radius: var(--radius-sm);">
+                                    <strong>Your Answer</strong>
+                                    <p>${userAnswers[i] || "No answer"}</p>
+                                </div>
+                                <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: var(--radius-sm);">
+                                    <strong style="color: #10B981;">Ideal Answer</strong>
+                                    <p>${item.idealAnswer}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>`;
+                    `;
                 });
-
-                box.classList.remove("hidden-empty");
-                box.scrollIntoView({ behavior: "smooth" });
-
-            } catch (error) {
-                console.error("Comparison error:", error);
-                btn.disabled = false;
-                btn.innerText = originalText;
-                alert("Error fetching ideal answers: " + error.message);
-            }
+                box.innerHTML = html;
+                box.classList.remove("hidden");
+            } catch (e) { showToast("Error loading answers", 'error'); }
         }
-
-
-        // Force-hide loading on page load
-        window.addEventListener("load", () => {
-            const loading = document.getElementById("loading");
-            if (loading) {
-                loading.style.display = "none";
-            }
-        });
-
     </script>
-
 </body>
 
 </html>

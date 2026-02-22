@@ -5,26 +5,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - AI Interviewer</title>
+    <!-- Fonts & CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Shared CSS only -->
+    <!-- jsPDF for Reports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js"></script>
+
     <style>
-        /* Minimal layout override */
+        /* Dashboard specific overrides */
         .dashboard-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
-        /* Admin Tabs */
         .admin-tabs {
             display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--card-border);
-            padding-bottom: 10px;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            overflow-x: auto;
         }
 
         .tab-btn {
@@ -33,176 +40,49 @@
             color: var(--text-muted);
             font-size: 1rem;
             cursor: pointer;
-            padding: 5px 10px;
+            padding: 0.5rem 1rem;
             font-weight: 600;
+            white-space: nowrap;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+            background: rgba(var(--primary), 0.05);
+            /* fix rgba syntax if simple hex */
+            background: var(--bg-card);
         }
 
         .tab-btn.active {
-            color: var(--primary-color);
-            border-bottom: 2px solid var(--primary-color);
-        }
-
-        /* User Table */
-        .user-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-
-        .user-table th,
-        .user-table td {
-            text-align: left;
-            padding: 12px 15px;
-            border-bottom: 1px solid var(--card-border);
-        }
-
-        .user-table th {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--primary-color);
-        }
-
-        .action-btn {
-            padding: 4px 8px;
-            font-size: 0.8rem;
-            margin-right: 5px;
-        }
-
-        .btn-delete {
-            background: rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
-        }
-
-        .btn-delete:hover {
-            background: rgba(239, 68, 68, 0.4);
-        }
-
-        .btn-edit {
-            background: rgba(59, 130, 246, 0.2);
-            color: #93c5fd;
-        }
-
-        .btn-edit:hover {
-            background: rgba(59, 130, 246, 0.4);
-        }
-
-
-        .btn-delete-interview {
-            background: rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
-            padding: 6px 12px;
-            font-size: 0.75rem;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-
-        .btn-delete-interview:hover {
-            background: rgba(239, 68, 68, 0.4);
-        }
-
-        /* User Email Link */
-        .user-email-link {
-            color: var(--secondary-color);
-            cursor: pointer;
-            text-decoration: underline;
-            transition: color 0.2s;
-        }
-
-        .user-email-link:hover {
-            color: var(--primary-color);
-        }
-
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(5px);
-        }
-
-        .modal.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius);
-            padding: 2rem;
-            max-width: 800px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            position: relative;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--card-border);
-        }
-
-        .modal-close {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            border-radius: 0;
             background: transparent;
-            border: none;
-            color: var(--text-muted);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        .modal-close:hover {
-            color: var(--primary-color);
-        }
-
-        /* Learner Stats */
+        /* Stats Grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            gap: 1.5rem;
+            margin-bottom: 3rem;
         }
 
         .stat-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius);
-            padding: 20px;
             display: flex;
             align-items: center;
-            gap: 15px;
-            transition: transform 0.2s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-3px);
-            border-color: rgba(99, 102, 241, 0.3);
+            gap: 1rem;
+            padding: 1.5rem;
         }
 
         .stat-icon {
             width: 50px;
             height: 50px;
             border-radius: 12px;
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(var(--primary), 0.1);
+            /* fallback */
+            background: var(--bg-body);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -210,284 +90,466 @@
         }
 
         .stat-info h4 {
-            color: var(--text-muted);
+            margin: 0;
             font-size: 0.85rem;
+            color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
         }
 
         .stat-info .value {
-            font-size: 1.5rem;
+            font-size: 1.75rem;
             font-weight: 700;
-            color: var(--text-color);
+            color: var(--text-main);
         }
     </style>
 </head>
 
 <body>
+
     <nav class="navbar">
         <div class="nav-container">
-            <a href="index.html" class="logo">AI Interview Coach</a>
+            <a href="index.html" class="logo">
+                <span style="font-size: 2rem;">🤖</span>
+                <span>AI Interview Coach</span>
+            </a>
+
+            <button class="mobile-toggle" aria-label="Toggle Menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </button>
+
             <div class="nav-links">
-                <span id="user-display" style="margin-right: 15px; font-weight: 500;"></span>
-                <a href="#" onclick="logout()" class="logout-link">Logout</a>
+                <span id="user-display" style="font-weight: 500; color: var(--text-main);"></span>
+                <a href="profile.html" class="nav-link" style="display: flex; align-items: center; gap: 0.25rem;">
+                    <span>👤</span> My Profile
+                </a>
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle Dark Mode">
+                    <span>🌙</span>
+                </button>
+                <button onclick="logout()" class="btn btn-secondary"
+                    style="padding: 0.5rem 1rem; font-size: 0.9rem;">Logout</button>
             </div>
         </div>
     </nav>
 
-    <div class="app-container">
+    <div class="app-container" style="margin-top: 2rem; margin-bottom: 4rem;">
         <header class="dashboard-header">
             <div class="welcome-text">
-                <h1>My Dashboard</h1>
-                <p>Track your interview performance</p>
+                <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">My Dashboard</h1>
+                <p style="color: var(--text-muted);">Track your progress and interview history.</p>
             </div>
-            <a href="mock-interview.html" id="startInterviewBtn" class="btn btn-primary" style="width: auto;">+ Start
-                New Interview</a>
+            <a href="mock-interview.html" id="startInterviewBtn" class="btn btn-primary">+ Start New Interview</a>
         </header>
 
         <!-- Learner Stats Section -->
         <section id="learner-stats" class="hidden">
             <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon" style="color: #6366f1;">📊</div>
+                <div class="card stat-card">
+                    <div class="stat-icon">📊</div>
                     <div class="stat-info">
                         <h4>Total Interviews</h4>
                         <div class="value" id="stat-total">0</div>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="color: #10b981;">⭐</div>
+                <div class="card stat-card">
+                    <div class="stat-icon">⭐</div>
                     <div class="stat-info">
                         <h4>Average Score</h4>
                         <div class="value" id="stat-avg">0.0</div>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="color: #f59e0b;">🏆</div>
+                <div class="card stat-card">
+                    <div class="stat-icon">🏆</div>
                     <div class="stat-info">
                         <h4>Highest Score</h4>
                         <div class="value" id="stat-high">0</div>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="color: #ec4899;">💼</div>
+                <div class="card stat-card">
+                    <div class="stat-icon">💼</div>
                     <div class="stat-info">
                         <h4>Top Role</h4>
-                        <div class="value" id="stat-role" style="font-size: 1rem;">-</div>
+                        <div class="value" id="stat-role" style="font-size: 1.1rem;">-</div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section id="admin-section" class="hidden">
+        <!-- Navigation Tabs -->
+        <section id="dashboard-nav">
             <div class="admin-tabs">
-                <button class="tab-btn active" onclick="switchTab('interviews')">Past Interviews</button>
-                <button id="admin-analytics-tab" class="tab-btn" onclick="switchTab('performance')">Performance
+                <button class="tab-btn active" onclick="switchTab('interviews', this)">My Interviews</button>
+                <button id="resume-analytics-tab" class="tab-btn" onclick="switchTab('resume-reviews', this)">Resume
                     Analytics</button>
-                <button id="admin-tab-btn" class="tab-btn hidden" onclick="switchTab('users')">User Management</button>
+                <button id="analytics-tab" class="tab-btn" onclick="switchTab('performance', this)">Performance
+                    Stats</button>
+                <button id="admin-tab-btn" class="tab-btn hidden" onclick="switchTab('users', this)">User
+                    Management</button>
             </div>
         </section>
 
         <!-- Interviews Tab -->
         <section id="interviews-view">
-            <div class="interview-list-header">
-                <h3>Past Interviews</h3>
+            <h3 style="margin-bottom: 1.5rem;">Practice Interviews</h3>
+            <div id="practice-interview-list">
+                <div class="text-center" style="padding: 2rem; color: var(--text-muted);">Loading...</div>
             </div>
-            <div id="interview-list">
-                <div class="empty-state">Loading interviews...</div>
+
+            <h3 style="margin: 3rem 0 0.5rem;">Resume-Based Interviews</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+                Interviews started from <a href="resume-review.html" style="color: var(--primary);">Resume Analysis</a>
+                using your uploaded CV appear here.
+            </p>
+            <div id="resume-interview-list">
+                <div class="text-center" style="padding: 2rem; color: var(--text-muted);">Loading...</div>
+            </div>
+        </section>
+
+        <!-- Resume Reviews Tab -->
+        <section id="resume-reviews-view" class="hidden">
+            <h3 style="margin-bottom: 1.5rem;">Resume Analysis History</h3>
+            <div id="resume-review-list">
+                <div class="text-center" style="padding: 2rem; color: var(--text-muted);">Loading...</div>
             </div>
         </section>
 
         <!-- Performance Tab -->
         <section id="performance-view" class="hidden">
-            <div class="interview-list-header">
-                <h3>Performance Analytics</h3>
-            </div>
-            <div class="card"
-                style="background: var(--card-bg); padding: 20px; border-radius: var(--radius); border: 1px solid var(--card-border);">
-                <canvas id="performanceChart"></canvas>
+            <h3 style="margin-bottom: 1.5rem;">Performance Analytics</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
+                <div class="card">
+                    <h4 style="margin-bottom: 1rem;">Progress Over Time</h4>
+                    <canvas id="performanceChart"></canvas>
+                </div>
+                <div class="card">
+                    <h4 style="margin-bottom: 1rem;">Average Score by Role</h4>
+                    <canvas id="rolePerformanceChart"></canvas>
+                </div>
             </div>
         </section>
 
         <!-- User Management Tab (Admin Only) -->
         <section id="users-view" class="hidden">
-            <div class="interview-list-header">
-                <h3>Manage Users</h3>
-            </div>
+            <h3 style="margin-bottom: 1.5rem;">Manage Users</h3>
             <div id="user-list">
-                <!-- User Table will go here -->
-                <div class="empty-state">Loading users...</div>
+                <div class="text-center" style="padding: 2rem; color: var(--text-muted);">Loading users...</div>
             </div>
         </section>
     </div>
 
-    <!-- User Interview Modal -->
-    <div id="userInterviewModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalUserEmail">User Interviews</h2>
-                <button class="modal-close" onclick="closeUserModal()">&times;</button>
+    <!-- Modal -->
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-grid">
+            <div class="footer-col">
+                <div class="logo">🤖 AI Interview Coach</div>
             </div>
-            <div id="modalInterviewList">
-                <div class="empty-state">Loading...</div>
+            <div class="footer-col">
+                <p>&copy; <span id="currentYear"></span></p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Generic Modal for Details -->
+    <div id="detailsModal" class="modal-overlay hidden" onclick="closeModal(event)">
+        <div class="modal-content card" onclick="event.stopPropagation()"
+            style="max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 id="modalTitle">Details</h3>
+                <button onclick="closeModal()"
+                    style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div id="modalBody">
+                <!-- Content injected here -->
+            </div>
+            <div style="margin-top: 1.5rem; text-align: right;">
+                <button onclick="closeModal()" class="btn btn-secondary">Close</button>
             </div>
         </div>
     </div>
 
-    <!-- Interview Details Modal -->
-    <div id="interviewDetailsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Interview Details</h2>
-                <button class="modal-close" onclick="closeDetailsModal()">&times;</button>
-            </div>
-            <div id="detailsContent">
-                <!-- Q&A will be injected here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- User Performance Modal -->
-    <div id="userPerformanceModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="perfModalTitle">User Performance</h2>
-                <button class="modal-close" onclick="closeUserPerformanceModal()">&times;</button>
-            </div>
-            <div style="padding: 20px;">
-                <canvas id="modalPerformanceChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Change Role Modal -->
-    <div id="changeRoleModal" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h2 id="roleModalTitle">Change User Role</h2>
-                <button class="modal-close" onclick="closeRoleModal()">&times;</button>
-            </div>
-            <p id="roleModalUserText" style="margin-bottom: 15px;"></p>
-            <div style="display: flex; gap: 10px;">
-                <button class="btn btn-primary" onclick="confirmRoleChange('user')">Make Learner</button>
-                <button class="btn btn-secondary" onclick="confirmRoleChange('admin')">Make Admin</button>
-            </div>
-        </div>
-    </div>
+    <!-- Main JS -->
+    <script src="js/main.js"></script>
 
     <script>
-        const token = localStorage.getItem('token');
-        const role = localStorage.getItem('userRole');
-        const getApiBaseUrl = () => {
-            const h = window.location.hostname;
-            const p = window.location.protocol;
-            if (p === 'file:' || h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.')) {
-                return 'http://localhost:5000';
-            }
-            return '';
-        };
-        const API_BASE_URL = getApiBaseUrl();
+        const token = sessionStorage.getItem('token');
+        const role = sessionStorage.getItem('userRole');
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : '';
+        let allInterviewsData = []; // Store for performance charts
 
+        if (!token) { window.location.href = 'login.html'; }
+        document.getElementById('user-display').innerText = sessionStorage.getItem('userEmail') || 'User';
 
-        if (!token) window.location.href = 'login.html';
-
-        document.getElementById('user-display').innerText = localStorage.getItem('userEmail') || 'User';
-
-        // Setup Admin View
         if (role === 'admin') {
             document.querySelector('.welcome-text h1').innerText = "Admin Control Center";
-            document.querySelector('.welcome-text h1').style.background = "linear-gradient(to right, #ec4899, #8b5cf6)";
-            document.querySelector('.welcome-text h1').style.webkitBackgroundClip = "text";
-            document.querySelector('.welcome-text h1').style.webkitTextFillColor = "transparent";
-
-            document.querySelector('.welcome-text p').innerText = "Manage users and oversee all interview performance";
-            document.querySelector('.welcome-text p').style.color = "#d1d5db";
-
-            document.getElementById('admin-section').classList.remove('hidden');
             document.getElementById('admin-tab-btn').classList.remove('hidden');
-
-            // Hide the Start Interview button for admins
             document.getElementById('startInterviewBtn').style.display = 'none';
-            // Hide separate performance tab for admins (accessed via Users now)
-            document.getElementById('admin-analytics-tab').style.display = 'none';
+            document.getElementById('analytics-tab').style.display = 'none';
+        }
+
+        // Tab Switching
+        window.switchTab = function (tabName, btn) {
+            // Hide all sections
+            ['interviews', 'resume-reviews', 'performance', 'users'].forEach(t => {
+                const el = document.getElementById(t + '-view');
+                if (el) el.classList.add('hidden');
+            });
+            // Show selected
+            document.getElementById(tabName + '-view').classList.remove('hidden');
+
+            // Update buttons
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+
+            // Load data if needed
+            if (tabName === 'users') fetchUsers();
+            if (tabName === 'resume-reviews') fetchResumeReviews();
+            if (tabName === 'performance') renderPerformanceCharts();
         }
 
         async function fetchInterviews() {
+            const errMsg = '<div class="text-center" style="color:var(--error);">Failed to load data. Please refresh.</div>';
             try {
                 const endpoint = role === 'admin' ? `${API_BASE_URL}/admin/all-interviews` : `${API_BASE_URL}/my-interviews`;
                 const res = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${token}` } });
-
-                if (res.status === 401 || res.status === 403) return logout();
-
+                if (res.status === 401 || res.status === 403) { logout(); return; }
                 const data = await res.json();
 
-                // If learner, calculate and show stats
+                if (!res.ok) {
+                    console.error('Fetch interviews error:', data);
+                    document.getElementById('practice-interview-list').innerHTML = errMsg;
+                    document.getElementById('resume-interview-list').innerHTML = errMsg;
+                    return;
+                }
+
+                if (!Array.isArray(data)) {
+                    document.getElementById('practice-interview-list').innerHTML = errMsg;
+                    document.getElementById('resume-interview-list').innerHTML = errMsg;
+                    return;
+                }
+
                 if (role !== 'admin') {
                     document.getElementById('learner-stats').classList.remove('hidden');
                     calculateLearnerStats(data);
                 }
 
-                const list = document.getElementById('interview-list');
+                allInterviewsData = data;
 
-                if (data.length === 0) {
-                    list.innerHTML = `<div class="empty-state"><p>No interviews found yet.</p></div>`;
+                const practiceInterviews = data.filter(i => !i.type || i.type === 'standard');
+                const resumeInterviews = data.filter(i => i.type === 'resume');
+
+                renderList(practiceInterviews, 'practice-interview-list');
+                renderList(resumeInterviews, 'resume-interview-list');
+            } catch (e) {
+                console.error('fetchInterviews error:', e);
+                document.getElementById('practice-interview-list').innerHTML = errMsg;
+                document.getElementById('resume-interview-list').innerHTML = errMsg;
+            }
+        }
+
+        function renderList(data, containerId) {
+            const container = document.getElementById(containerId);
+            if (data.length === 0) {
+                container.innerHTML = '<div class="text-center" style="color:var(--text-muted);">No interviews found.</div>';
+                return;
+            }
+            container.innerHTML = data.map(i => {
+                const date = new Date(i.date).toLocaleDateString();
+                const avgScore = i.scores?.length ? (i.scores.reduce((a, b) => a + b, 0) / i.scores.length).toFixed(1) : 0;
+                let badgeClass = avgScore >= 7 ? 'high' : (avgScore >= 5 ? 'med' : 'low');
+
+                // For Admin: Show User Email
+                const title = role === 'admin' && i.email ? `${i.role} <span style="font-weight:400; font-size:0.85em; color:var(--text-muted);">(${i.email})</span>` : i.role;
+
+                return `
+                    <div class="interview-card">
+                        <div>
+                            <div style="font-weight: 700; margin-bottom: 0.25rem;">${title}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">${date} - ${i.difficulty || 'Normal'}</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="score-badge ${badgeClass}" style="margin-right: 0.5rem;">${avgScore}/10</span>
+                            
+                            <button onclick="viewInterviewDetails('${i.id}')" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">👁️ View</button>
+                            <button onclick="downloadInterviewPDF('${i.id}', '${i.role}', '${date}')" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" title="Download Report">⬇️ PDF</button>
+                            
+                            ${role !== 'admin' ?
+                        `<button onclick="showToast('Retake feature coming soon!', 'info')" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Retake</button>` :
+                        `<button onclick="deleteItem('interviews', '${i.id}')" class="btn btn-secondary" style="color:var(--error); border-color:var(--error); padding: 0.25rem 0.5rem;">Delete</button>`
+                    }
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // PDF Download Logic
+        async function downloadInterviewPDF(interviewId, roleTitle, date) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            try {
+                showToast("Generating full report with AI feedback... please wait.", "info");
+
+                // 1. Fetch Interview Details
+                const res = await fetch(`${API_BASE_URL}/my-interviews/${interviewId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) throw new Error('Failed to fetch interview details');
+                const interview = await res.json();
+
+                // 2. Fetch Ideal Answers (AI Generated)
+                let idealAnswers = [];
+                try {
+                    const idealRes = await fetch(`${API_BASE_URL}/ideal-answers`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ interviewId })
+                    });
+
+                    if (idealRes.ok) {
+                        const idealData = await idealRes.json();
+                        idealAnswers = idealData.idealAnswers || [];
+                    } else {
+                        console.warn("Could not fetch ideal answers, possibly incomplete interview.");
+                    }
+                } catch (err) {
+                    console.error("Ideal answer fetch failed", err);
+                }
+
+                // 3. Generate PDF
+                // Header
+                doc.setFontSize(22);
+                doc.setTextColor(79, 70, 229); // Primary Color
+                doc.text("AI Interview Report", 20, 20);
+
+                doc.setFontSize(12);
+                doc.setTextColor(100);
+                doc.text(`Role: ${roleTitle}`, 20, 35);
+                doc.text(`Date: ${date}`, 20, 42);
+
+                if (interview.scores && interview.scores.length > 0) {
+                    const validScores = interview.scores.filter(s => typeof s === 'number');
+                    const avg = validScores.length ? (validScores.reduce((a, b) => a + b, 0) / validScores.length).toFixed(1) : 0;
+                    doc.text(`Average Score: ${avg}/10`, 20, 49);
+                }
+
+                // Content Table construction
+                const questions = interview.questions || [];
+                const userAnswers = interview.answers || [];
+                const scores = interview.scores || [];
+
+                const tableBody = questions.map((q, index) => {
+                    const uAns = userAnswers[index] || "No answer provided.";
+                    const feedback = (interview.feedbacks && interview.feedbacks[index]) ? interview.feedbacks[index] : "No feedback recorded.";
+                    const combined = uAns + "\n\n---\nAI Feedback:\n" + feedback;
+                    const iAnsRaw = idealAnswers[index];
+                    const iAns = (iAnsRaw && iAnsRaw.idealAnswer) ? iAnsRaw.idealAnswer : (typeof iAnsRaw === 'string' ? iAnsRaw : "Detailed answer not available.");
+                    const score = scores[index] !== undefined ? scores[index] : '-';
+
+                    return [
+                        `Q${index + 1}: ${q}`,
+                        combined,
+                        iAns,
+                        score
+                    ];
+                });
+
+                doc.autoTable({
+                    startY: 60,
+                    head: [['Question', 'Your Answer & Feedback', 'Ideal Answer (10/10)', 'Score']],
+                    body: tableBody,
+                    theme: 'grid',
+                    headStyles: { fillColor: [79, 70, 229] },
+                    styles: { fontSize: 9, cellPadding: 3 },
+                    columnStyles: {
+                        0: { cellWidth: 40 }, // Question
+                        1: { cellWidth: 55 }, // User Answer + FB
+                        2: { cellWidth: 70 }, // Ideal Answer
+                        3: { cellWidth: 15, halign: 'center' } // Score
+                    },
+                    didDrawPage: function (data) {
+                        // Footer on each page
+                        doc.setFontSize(8);
+                        doc.setTextColor(150);
+                        doc.text("Generated by AI Interview Coach", 20, doc.internal.pageSize.height - 10);
+                    }
+                });
+
+                doc.save(`Interview_Report_${roleTitle.replace(/\s+/g, '_')}_${date.replace(/\//g, '-')}.pdf`);
+                showToast('Report downloaded successfully!', 'success');
+
+            } catch (e) {
+                console.error(e);
+                showToast('Failed to generate PDF: ' + e.message, 'error');
+            }
+        }
+
+        // Stats Calculation
+        function calculateLearnerStats(data) {
+            document.getElementById('stat-total').innerText = data.length;
+            if (data.length > 0) {
+                const allScores = data.flatMap(i => i.scores || []);
+                if (allScores.length) {
+                    const avg = (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1);
+                    document.getElementById('stat-avg').innerText = avg;
+                    document.getElementById('stat-high').innerText = Math.max(...allScores);
+                }
+            }
+        }
+
+
+
+        async function fetchResumeReviews() {
+            const container = document.getElementById('resume-review-list');
+            try {
+                const endpoint = role === 'admin' ? `${API_BASE_URL}/admin/all-resume-reviews` : `${API_BASE_URL}/my-resume-reviews`;
+                const res = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.status === 401) { logout(); return; }
+                const data = await res.json();
+
+                if (!res.ok || !Array.isArray(data)) {
+                    console.error('Fetch resume reviews error:', data);
+                    container.innerHTML = '<div class="text-center" style="color:var(--error);">Failed to load. Please refresh.</div>';
                     return;
                 }
 
-                list.innerHTML = data.map(interview => {
-                    const date = new Date(interview.date).toLocaleDateString(undefined, {
-                        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                    });
-                    const avgScore = interview.scores.length
-                        ? (interview.scores.reduce((a, b) => a + b, 0) / interview.scores.length).toFixed(1) : 0;
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="text-center" style="color:var(--text-muted);">No resume reviews found.</div>';
+                    return;
+                }
 
-                    let badgeClass = avgScore >= 7 ? 'high' : (avgScore >= 5 ? '' : 'low');
-
-                    // Make user email clickable for admins
-                    const userLabel = role === 'admin' && interview.email
-                        ? `<div style="font-size:0.8rem; margin-bottom:4px;">
-                             <span class="user-email-link" onclick="viewUserInterviews(${interview.user_id || 0}, '${interview.email}')">${interview.email}</span>
-                           </div>` : '';
-
-                    // Add delete button for admins
-                    const deleteBtn = role === 'admin'
-                        ? `<button class="btn-delete-interview" onclick="deleteInterview('${interview.id}')">Delete</button>` : '';
-
-                    // Add retake button only for regular users
-                    const retakeBtn = role !== 'admin'
-                        ? `<button class="btn-retake btn-edit" data-role="${interview.role}" data-questions='${JSON.stringify(interview.questions)}' style="padding: 6px 12px; border:none; border-radius:6px; cursor:pointer; background:rgba(16, 185, 129, 0.2); color:#6ee7b7;">Retake</button>`
-                        : '';
+                container.innerHTML = data.map(r => {
+                    const date = new Date(r.date).toLocaleDateString();
+                    // Admin sees email, user sees just role
+                    const title = role === 'admin' ? `${r.role} (${r.email})` : r.role;
+                    const score = r.ats_score || 0;
+                    let badgeClass = score >= 80 ? 'high' : (score >= 60 ? 'med' : 'low');
 
                     return `
-                        <div class="interview-card" style="display: flex; justify-content: space-between; align-items: center; position: relative;">
-                            <div style="flex: 1;">
-                                ${userLabel}
-                                <div class="interview-role">${interview.role}</div>
-                                <div class="interview-date">${date}</div>
+                        <div class="interview-card">
+                            <div>
+                                <div style="font-weight: 700; margin-bottom: 0.25rem;">${title}</div>
+                                <div style="font-size: 0.85rem; color: var(--text-muted);">${date}</div>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div class="score-badge ${badgeClass}">Avg Score: ${avgScore} / 10</div>
-                                <button class="btn-edit" style="padding: 6px 12px; border:none; border-radius:6px; cursor:pointer;" onclick="viewInterviewDetails('${interview.id}')">View</button>
-                                ${retakeBtn}
-                                ${deleteBtn}
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span class="score-badge ${badgeClass}" style="background:none; border: 1px solid currentColor; margin-right: 0.5rem;">ATS: ${score}%</span>
+                                
+                                <button onclick="viewResumeDetails('${r.id}')" class="btn btn-secondary" style="padding: 0.25rem 0.5rem;">👁️ View</button>
+                                
+                                ${role === 'admin' ?
+                            `<button onclick="deleteItem('resume-reviews', '${r.id}')" class="btn btn-secondary" style="color:var(--error); border-color:var(--error); padding: 0.25rem 0.5rem;">Delete</button>` : ''
+                        }
                             </div>
-                        </div>`;
+                        </div>
+                    `;
                 }).join('');
-
-                // Add event listeners to retake buttons
-                setTimeout(() => {
-                    document.querySelectorAll('.btn-retake').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            const role = btn.getAttribute('data-role');
-                            const questions = JSON.parse(btn.getAttribute('data-questions'));
-                            retakeInterview(role, questions);
-                        });
-                    });
-                }, 0);
-            } catch (err) {
-                console.error(err);
-                document.getElementById('interview-list').innerHTML = '<div class="empty-state">Failed to load.</div>';
+            } catch (e) {
+                console.error('fetchResumeReviews error:', e);
+                container.innerHTML = '<div class="text-center" style="color:var(--error);">Failed to load. Please refresh.</div>';
             }
         }
 
@@ -495,404 +557,232 @@
             if (role !== 'admin') return;
             try {
                 const res = await fetch(`${API_BASE_URL}/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
-                const users = await res.json();
+                const data = await res.json();
 
-                const list = document.getElementById('user-list');
-                if (users.length === 0) return list.innerHTML = '<div class="empty-state">No users found.</div>';
-
-                let html = `
-                    <table class="user-table">
-                        <thead><tr><th>ID</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead>
-                        <tbody>
-                `;
-
-                html += users.map(user => `
-                    <tr>
-                        <td>${user.id}</td>
-                        <td>
-                            <a href="admin-user-details.html?id=${user.id}" style="color: var(--secondary-color); text-decoration: none; font-weight: 500;">
-                                ${user.email}
-                            </a>
-                        </td>
-                        <td>${user.role === 'user' ? 'Learner' : 'Admin'}</td>
-                        <td>
-                            <div style="display: flex; gap: 5px;">
-                                <a href="admin-user-details.html?id=${user.id}" class="btn action-btn btn-edit" style="text-decoration:none;">View</a>
-                            </div>
-                        </td>
-                    </tr>
+                const container = document.getElementById('user-list');
+                container.innerHTML = data.map(u => `
+                    <div class="interview-card">
+                        <div>
+                            <div style="font-weight: 700;">${u.email}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Role: ${u.role} | Last Login: ${u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never'}</div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            ${u.role !== 'admin' ? `<button onclick="deleteItem('users', '${u.id}')" class="btn btn-secondary" style="color:var(--error); border-color:var(--error); padding: 0.25rem 0.5rem;">Delete</button>` : ''}
+                        </div>
+                    </div>
                 `).join('');
-
-                html += '</tbody></table>';
-                list.innerHTML = html;
-            } catch (err) {
-                console.error(err);
-                document.getElementById('user-list').innerHTML = '<div class="empty-state">Failed to load users.</div>';
-            }
+            } catch (e) { console.error(e); }
         }
 
-
-        function calculateLearnerStats(interviews) {
-            if (!interviews || interviews.length === 0) return;
-
-            // Total
-            document.getElementById('stat-total').innerText = interviews.length;
-
-            // Average & High Score
-            let allScores = [];
-            interviews.forEach(i => {
-                if (i.scores && i.scores.length > 0) allScores.push(...i.scores);
-            });
-
-            if (allScores.length > 0) {
-                const avg = (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1);
-                const high = Math.max(...allScores);
-                document.getElementById('stat-avg').innerText = avg;
-                document.getElementById('stat-high').innerText = high;
-            }
-
-            // Top Role
-            const roles = {};
-            interviews.forEach(i => {
-                const r = i.role || 'General';
-                roles[r] = (roles[r] || 0) + 1;
-            });
-
-            if (Object.keys(roles).length > 0) {
-                const topRole = Object.keys(roles).reduce((a, b) => roles[a] > roles[b] ? a : b);
-                document.getElementById('stat-role').innerText = topRole;
-            }
-        }
-
-
-        // --- Admin Action Handlers ---
-
-
-        // --- Admin Action Handlers ---
-
-        function handleUserAction(selectElem, userId, currentRole, userEmail) {
-            const action = selectElem.value;
-            selectElem.value = ""; // Reset dropdown
-
-            if (action === 'delete') {
-                deleteUser(userId);
-            } else if (action === 'performance') {
-                showUserPerformance(userId, userEmail);
-            } else if (action === 'change_role') {
-                openRoleModal(userId, userEmail);
-            }
-        }
-
-        async function deleteUser(id) {
-            if (!confirm("Are you sure? This will delete the user and all their data permanently.")) return;
+        async function deleteItem(type, id) {
+            if (!confirm('Are you sure you want to delete this item?')) return;
             try {
-                const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
+                const res = await fetch(`${API_BASE_URL}/admin/${type}/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (res.ok) fetchUsers(); // Refresh list
-                else alert("Failed to delete user");
-            } catch (e) { alert("Error deleting user"); }
-        }
-
-        let selectedUserIdForRole = null;
-        function openRoleModal(id, email) {
-            selectedUserIdForRole = id;
-            document.getElementById('roleModalUserText').innerText = `Select new role for: ${email}`;
-            document.getElementById('changeRoleModal').classList.add('active');
-        }
-
-        function closeRoleModal() {
-            document.getElementById('changeRoleModal').classList.remove('active');
-            selectedUserIdForRole = null;
-        }
-
-        async function confirmRoleChange(newRole) {
-            if (!selectedUserIdForRole) return;
-            try {
-                const res = await fetch(`${API_BASE_URL}/admin/users/${selectedUserIdForRole}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ role: newRole })
-                });
                 if (res.ok) {
-                    closeRoleModal();
-                    fetchUsers();
+                    showToast('Deleted successfully', 'success');
+                    if (type === 'users') fetchUsers();
+                    else if (type === 'resume-reviews') fetchResumeReviews();
+                } else {
+                    showToast('Failed to delete', 'error');
                 }
-                else alert("Failed to update user");
-            } catch (e) { alert("Error updating user"); }
+            } catch (e) { console.error(e); }
         }
 
-        function switchTab(tab) {
-            const tabs = document.querySelectorAll('.tab-btn');
-            tabs.forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-
-            document.getElementById('interviews-view').classList.add('hidden');
-            document.getElementById('users-view').classList.add('hidden');
-            document.getElementById('performance-view').classList.add('hidden');
-
-            if (tab === 'interviews') {
-                document.getElementById('interviews-view').classList.remove('hidden');
-            } else if (tab === 'performance') {
-                document.getElementById('performance-view').classList.remove('hidden');
-                if (role !== 'admin') renderAnalytics(); // Only render for non-admin on this tab
-            } else {
-                document.getElementById('users-view').classList.remove('hidden');
-                fetchUsers();
+        function renderPerformanceCharts() {
+            if (allInterviewsData.length === 0) {
+                document.getElementById('performanceChart').parentElement.innerHTML = '<p style="color:var(--text-muted);text-align:center;">No interview data yet.</p>';
+                document.getElementById('rolePerformanceChart').parentElement.innerHTML = '';
+                return;
             }
-        }
 
-        // --- Retake Logic ---
-        function retakeInterview(role, questions) {
-            // questions is already an array, no need to parse
-            console.log("Retake called with role:", role, "questions:", questions);
-            const dataToSave = { role, questions };
-            console.log("Saving to localStorage:", dataToSave);
-            localStorage.setItem('retakeData', JSON.stringify(dataToSave));
-            window.location.href = 'mock-interview.html';
-        }
+            // Chart 1: Progress over time (sorted by date)
+            const sorted = [...allInterviewsData].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const timeLabels = sorted.map(i => new Date(i.date).toLocaleDateString());
+            const timeScores = sorted.map(i => i.scores.length ? (i.scores.reduce((a, b) => a + b, 0) / i.scores.length).toFixed(1) : 0);
 
-        // --- Analytics Chart Logic ---
-
-        // 1. User's Own Analytics (Performance Tab)
-        // 2. Admin's Analytics for Specific User (Modal)
-
-        let chartInstance = null; // For the main tab
-        let modalChartInstance = null; // For the admin modal
-
-        async function renderAnalytics() {
-            // This function is now ONLY for the "Performance" tab, which is hidden for admins or used by learners
-            if (role === 'admin') return;
-
-            try {
-                const res = await fetch(`${API_BASE_URL}/my-interviews`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const interviews = await res.json();
-                drawChart(interviews, 'performanceChart', 'Your Average Score');
-            } catch (err) { console.error("Analytics Error:", err); }
-        }
-
-        async function showUserPerformance(userId, userEmail) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/interviews`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await res.json(); // { user, interviews }
-
-                document.getElementById('perfModalTitle').innerText = `Performance: ${userEmail}`;
-                document.getElementById('userPerformanceModal').classList.add('active');
-
-                drawChart(data.interviews, 'modalPerformanceChart', `Average Score (${userEmail})`, true);
-
-            } catch (e) { console.error(e); alert("Failed to load user performance"); }
-        }
-
-        function closeUserPerformanceModal() {
-            document.getElementById('userPerformanceModal').classList.remove('active');
-        }
-
-        function drawChart(interviews, canvasId, label, isModal = false) {
-            const sorted = interviews.sort((a, b) => new Date(a.date) - new Date(b.date));
-            const labels = sorted.map(i => new Date(i.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-            const scores = sorted.map(i => {
-                const avg = i.scores.length ? (i.scores.reduce((a, b) => a + b, 0) / i.scores.length) : 0;
-                return avg.toFixed(1);
-            });
-
-            const ctx = document.getElementById(canvasId).getContext('2d');
-
-            let updateInstance = isModal ? modalChartInstance : chartInstance;
-            if (updateInstance) updateInstance.destroy();
-
-            const newChart = new Chart(ctx, {
+            const ctx1 = document.getElementById('performanceChart');
+            if (ctx1._chartInstance) ctx1._chartInstance.destroy();
+            ctx1._chartInstance = new Chart(ctx1, {
                 type: 'line',
                 data: {
-                    labels: labels,
-                    datasets: [{
-                        label: label,
-                        data: scores,
-                        borderColor: '#8b5cf6',
-                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#ec4899'
-                    }]
+                    labels: timeLabels,
+                    datasets: [{ label: 'Avg Score', data: timeScores, borderColor: '#4F46E5', backgroundColor: 'rgba(79,70,229,0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#4F46E5' }]
                 },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: { beginAtZero: true, max: 10, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#9ca3af' } },
-                        x: { grid: { display: false }, ticks: { color: '#9ca3af' } }
-                    },
-                    plugins: { legend: { labels: { color: '#e5e7eb' } } }
-                }
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10, ticks: { stepSize: 2 } } } }
             });
 
-            if (isModal) modalChartInstance = newChart;
-            else chartInstance = newChart;
+            // Chart 2: Average score by role
+            const roleMap = {};
+            allInterviewsData.forEach(i => {
+                if (!roleMap[i.role]) roleMap[i.role] = [];
+                i.scores.forEach(s => roleMap[i.role].push(s));
+            });
+            const roleLabels = Object.keys(roleMap);
+            const roleAvgs = roleLabels.map(r => (roleMap[r].reduce((a, b) => a + b, 0) / roleMap[r].length).toFixed(1));
+            const colors = roleLabels.map((_, idx) => `hsl(${idx * 50 + 220}, 65%, 55%)`);
+
+            const ctx2 = document.getElementById('rolePerformanceChart');
+            if (ctx2._chartInstance) ctx2._chartInstance.destroy();
+            ctx2._chartInstance = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: roleLabels,
+                    datasets: [{ label: 'Avg Score', data: roleAvgs, backgroundColor: colors, borderRadius: 6 }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10 } } }
+            });
         }
 
-        async function deleteInterview(interviewId) {
-            if (!confirm("Are you sure you want to delete this interview? This action cannot be undone.")) return;
-            try {
-                const res = await fetch(`${API_BASE_URL}/admin/interviews/${interviewId}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    fetchInterviews(); // Refresh the list
-                } else {
-                    alert("Failed to delete interview");
-                }
-            } catch (e) {
-                console.error(e);
-                alert("Error deleting interview");
-            }
-        }
+        // --- View Details Logic ---
 
-        async function viewUserInterviews(userId, userEmail) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/interviews`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!res.ok) {
-                    alert("Failed to load user interviews");
-                    return;
-                }
-
-                const data = await res.json();
-                const modal = document.getElementById('userInterviewModal');
-                const modalTitle = document.getElementById('modalUserEmail');
-                const modalList = document.getElementById('modalInterviewList');
-
-                modalTitle.innerText = `Interviews for ${userEmail}`;
-
-                if (data.interviews.length === 0) {
-                    modalList.innerHTML = '<div class="empty-state">No interviews found for this user.</div>';
-                } else {
-                    modalList.innerHTML = data.interviews.map(interview => {
-                        const date = new Date(interview.date).toLocaleDateString(undefined, {
-                            year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                        });
-                        const avgScore = interview.scores.length
-                            ? (interview.scores.reduce((a, b) => a + b, 0) / interview.scores.length).toFixed(1) : 0;
-                        let badgeClass = avgScore >= 7 ? 'high' : (avgScore >= 5 ? '' : 'low');
-
-                        return `
-                            <div class="interview-card" style="display: flex; justify-content: space-between; align-items: center; position: relative;">
-                                <div style="flex: 1;">
-                                    <div class="interview-role">${interview.role}</div>
-                                    <div class="interview-date">${date}</div>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="score-badge ${badgeClass}">Avg Score: ${avgScore} / 10</div>
-                                    <button class="btn-delete-interview" onclick="deleteInterview('${interview.id}')">Delete</button>
-                                </div>
-                            </div>`;
-                    }).join('');
-                }
-
-                modal.classList.add('active');
-            } catch (e) {
-                console.error(e);
-                alert("Error loading user interviews");
-            }
-        }
-
-        function closeUserModal() {
-            document.getElementById('userInterviewModal').classList.remove('active');
-        }
-
-        // --- Interview Details Logic ---
         async function viewInterviewDetails(id) {
             try {
-                const res = await fetch(`${API_BASE_URL}/my-interviews/${id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!res.ok) {
-                    alert("Failed to load details");
-                    return;
-                }
-
+                showToast("Loading details...");
+                const res = await fetch(`${API_BASE_URL}/my-interviews/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
                 const data = await res.json();
-                const modal = document.getElementById('interviewDetailsModal');
-                const content = document.getElementById('detailsContent');
+                if (!res.ok) throw new Error(data.error || "Failed to load");
 
-                let html = `
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="color: var(--primary-color);">${data.role}</h3>
-                        <p style="color: var(--text-muted); font-size: 0.9rem;">
-                            Date: ${new Date(data.date).toLocaleString()}
-                        </p>
+                document.getElementById('modalTitle').innerText = `Interview: ${data.role} (${new Date(data.date).toLocaleDateString()})`;
+
+                // Build Q&A HTML (no ideal answers yet)
+                let content = `<div id="qa-container" style="display:flex; flex-direction:column; gap: 1.5rem;">`;
+                data.questions.forEach((q, i) => {
+                    const score = data.scores[i] !== undefined ? data.scores[i] : '-';
+                    const answer = data.answers[i] || '<span style="color:var(--text-muted); font-style:italic;">No answer recorded</span>';
+                    const feedback = (data.feedbacks && data.feedbacks[i]) ? data.feedbacks[i] : '<span style="color:var(--text-muted); font-style:italic;">No feedback recorded</span>';
+                    content += `
+                        <div id="qa-${i}" style="padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+                            <div style="font-weight: 600; color: var(--primary); margin-bottom: 0.5rem;">Q${i + 1}: ${q}</div>
+                            <div style="background: var(--bg-body); padding: 0.75rem; border-radius: var(--radius-sm); margin-bottom: 0.5rem;">
+                                <strong>Your Answer:</strong>
+                                <p style="margin: 0.5rem 0 0; color: var(--text-main);">${answer}</p>
+                                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-color);">
+                                    <strong>AI Feedback:</strong>
+                                    <p style="margin: 0.5rem 0 0; color: var(--text-main); font-size: 0.95rem;">${feedback}</p>
+                                </div>
+                            </div>
+                            <div id="ideal-${i}" style="background: rgba(16,185,129,0.07); border-left: 3px solid #10B981; padding: 0.75rem; border-radius: var(--radius-sm); margin-bottom: 0.5rem; display:none;">
+                                <strong style="color:#10B981;">💡 Ideal Answer:</strong>
+                                <p style="margin: 0.5rem 0 0; color: var(--text-main);">Loading...</p>
+                            </div>
+                            <div style="font-size: 0.9rem;">
+                                <strong>Score:</strong> <span class="score-badge ${score >= 7 ? 'high' : (score >= 5 ? 'med' : 'low')}">${score}/10</span>
+                            </div>
+                        </div>`;
+                });
+                content += `</div>
+                    <div style="text-align:center; margin-top: 1.5rem;">
+                        <button id="loadIdealBtn" onclick="loadIdealAnswers('${id}', ${data.questions.length})" class="btn btn-secondary">💡 Show Ideal Answers</button>
+                    </div>`;
+
+                document.getElementById('modalBody').innerHTML = content;
+                document.getElementById('detailsModal').classList.remove('hidden');
+
+            } catch (e) {
+                console.error(e);
+                showToast("Error loading details", "error");
+            }
+        }
+
+        window.loadIdealAnswers = async function (interviewId, questionCount) {
+            const btn = document.getElementById('loadIdealBtn');
+            btn.disabled = true;
+            btn.innerText = '⏳ Generating with AI...';
+            try {
+                const res = await fetch(`${API_BASE_URL}/ideal-answers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ interviewId })
+                });
+                const data = await res.json();
+                const idealAnswers = data.idealAnswers || [];
+
+                for (let i = 0; i < questionCount; i++) {
+                    const el = document.getElementById(`ideal-${i}`);
+                    if (el) {
+                        el.style.display = 'block';
+                        const item = idealAnswers[i] || {};
+                        el.querySelector('p').innerText = item.idealAnswer || 'Not available.';
+                    }
+                }
+                btn.style.display = 'none';
+            } catch (e) {
+                btn.disabled = false;
+                btn.innerText = '💡 Show Ideal Answers';
+                showToast('Failed to load ideal answers.', 'error');
+            }
+        }
+
+        async function viewResumeDetails(id) {
+            try {
+                showToast("Loading analysis...");
+                const res = await fetch(`${API_BASE_URL}/my-resume-reviews/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+
+                if (!res.ok) throw new Error(data.error || "Failed to load");
+
+                const modalTitle = document.getElementById('modalTitle');
+                const modalBody = document.getElementById('modalBody');
+
+                modalTitle.innerText = `Resume Analysis: ${data.role}`;
+
+                const stats = data.data || {};
+                const keywords = stats.keywordsMatched || [];
+                const missing = stats.missingSkills || [];
+                const issues = stats.formattingIssues || [];
+
+                let content = `
+                    <div style="text-align:center; margin-bottom: 2rem;">
+                         <div style="font-size: 3rem; font-weight: 800; color: ${data.ats_score >= 80 ? '#10B981' : (data.ats_score >= 60 ? '#F59E0B' : '#EF4444')};">
+                            ${data.ats_score}%
+                         </div>
+                         <div style="color: var(--text-muted);">ATS Compatibility Score</div>
+                    </div>
+
+                    <div style="display: grid; gap: 1.5rem;">
+                         <div class="card" style="border-left: 4px solid #10B981;">
+                            <h4 style="color: #10B981; margin-bottom: 0.5rem;">✅ Matched Keywords</h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                ${keywords.length ? keywords.map(k => `<span style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">${k}</span>`).join('') : 'None'}
+                            </div>
+                         </div>
+                         
+                         <div class="card" style="border-left: 4px solid #EF4444;">
+                            <h4 style="color: #EF4444; margin-bottom: 0.5rem;">⚠️ Missing Skills</h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                ${missing.length ? missing.map(k => `<span style="background: rgba(239, 68, 68, 0.1); color: #EF4444; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">${k}</span>`).join('') : 'None'}
+                            </div>
+                         </div>
+
+                         <div class="card">
+                            <h4 style="margin-bottom: 0.5rem;">📋 Formatting Issues</h4>
+                            <ul style="padding-left: 1.2rem; margin: 0; color: var(--text-muted);">
+                                ${issues.length ? issues.map(i => `<li>${i}</li>`).join('') : '<li>No major issues found.</li>'}
+                            </ul>
+                         </div>
                     </div>
                 `;
 
-                if (data.questions && data.questions.length > 0) {
-                    html += data.questions.map((q, index) => {
-                        const answer = data.answers[index] || "No answer provided";
-                        const score = data.scores[index] !== undefined ? data.scores[index] : "-";
+                modalBody.innerHTML = content;
+                document.getElementById('detailsModal').classList.remove('hidden');
 
-                        // Color code score
-                        let scoreColor = '#ef4444'; // red
-                        if (score >= 7) scoreColor = '#10b981'; // green
-                        else if (score >= 4) scoreColor = '#f59e0b'; // orange
-
-                        return `
-                            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                                <div style="margin-bottom: 8px; font-weight: 600; color: #e5e7eb;">
-                                    Q${index + 1}: ${q}
-                                </div>
-                                <div style="margin-bottom: 8px; color: #d1d5db; font-size: 0.95rem;">
-                                    <strong style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Your Answer:</strong><br>
-                                    ${answer}
-                                </div>
-                                <div style="font-size: 0.9rem; font-weight: 600; color: ${scoreColor};">
-                                    Score: ${score}/10
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                } else {
-                    html += '<p>No questions recorded for this interview.</p>';
-                }
-
-                content.innerHTML = html;
-                modal.classList.add('active');
-
-            } catch (err) {
-                console.error(err);
-                alert("Error loading details");
+            } catch (e) {
+                console.error(e);
+                showToast("Error loading details", "error");
             }
         }
 
-        function closeDetailsModal() {
-            document.getElementById('interviewDetailsModal').classList.remove('active');
+        function closeModal(e) {
+            if (e && e.target !== e.currentTarget) return;
+            document.getElementById('detailsModal').classList.add('hidden');
         }
 
-        // Close modal when clicking outside
-        document.getElementById('interviewDetailsModal').addEventListener('click', function (e) {
-            if (e.target === this) closeDetailsModal();
-        });
-
-        // Close modal when clicking outside
-        document.getElementById('userInterviewModal').addEventListener('click', function (e) {
-            if (e.target === this) closeUserModal();
-        });
-
-        function logout() {
-            localStorage.clear();
-            window.location.href = 'index.html';
-        }
-
+        // Init
         fetchInterviews();
+
     </script>
 </body>
 

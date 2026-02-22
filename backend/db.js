@@ -72,7 +72,11 @@ export async function getDb() {
         id SERIAL PRIMARY KEY,
         email TEXT UNIQUE,
         password TEXT,
-        role TEXT DEFAULT 'user'
+        role TEXT DEFAULT 'user',
+        last_login TEXT,
+        name TEXT,
+        reset_token TEXT,
+        reset_token_expiry TEXT
       );
     `);
 
@@ -84,10 +88,55 @@ export async function getDb() {
         questions TEXT,
         answers TEXT,
         scores TEXT,
+        feedbacks TEXT,
         date TEXT,
+        type TEXT DEFAULT 'standard',
         FOREIGN KEY(user_id) REFERENCES users(id)
       );
     `);
+
+    // New: Resume Reviews Table
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS resume_reviews (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER,
+        role TEXT,
+        ats_score INTEGER,
+        data TEXT,
+        date TEXT,
+        file_path TEXT,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+      );
+    `);
+
+    // Migration for existing Postgres databases
+    try {
+      await db.exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TEXT");
+    } catch (err) { console.log("Migration note (users): " + err.message); }
+
+    try {
+      await db.exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT");
+    } catch (err) { console.log("Migration note (name): " + err.message); }
+
+    try {
+      await db.exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT");
+    } catch (err) { console.log("Migration note (reset_token): " + err.message); }
+
+    try {
+      await db.exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expiry TEXT");
+    } catch (err) { console.log("Migration note (reset_token_expiry): " + err.message); }
+
+    try {
+      await db.exec("ALTER TABLE interviews ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'standard'");
+    } catch (err) { console.log("Migration note (interviews): " + err.message); }
+
+    try {
+      await db.exec("ALTER TABLE interviews ADD COLUMN IF NOT EXISTS feedbacks TEXT DEFAULT '[]'");
+    } catch (err) { console.log("Migration note (interviews feedbacks): " + err.message); }
+
+    try {
+      await db.exec("ALTER TABLE resume_reviews ADD COLUMN IF NOT EXISTS file_path TEXT");
+    } catch (err) { console.log("Migration note (resume_reviews): " + err.message); }
 
     console.log("PostgreSQL Database initialized");
 
@@ -104,7 +153,11 @@ export async function getDb() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT UNIQUE,
         password TEXT,
-        role TEXT DEFAULT 'user'
+        role TEXT DEFAULT 'user',
+        last_login TEXT,
+        name TEXT,
+        reset_token TEXT,
+        reset_token_expiry TEXT
       );
       CREATE TABLE IF NOT EXISTS interviews (
         id TEXT PRIMARY KEY,
@@ -113,24 +166,32 @@ export async function getDb() {
         questions TEXT,
         answers TEXT,
         scores TEXT,
+        feedbacks TEXT,
         date TEXT,
+        type TEXT DEFAULT 'standard',
+        FOREIGN KEY(user_id) REFERENCES users(id)
+      );
+      CREATE TABLE IF NOT EXISTS resume_reviews (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER,
+        role TEXT,
+        ats_score INTEGER,
+        data TEXT,
+        date TEXT,
+        file_path TEXT,
         FOREIGN KEY(user_id) REFERENCES users(id)
       );
     `);
 
     // Migration for existing SQLite databases
-    try {
-      await db.run("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'");
-      // eslint-disable-next-line no-unused-vars
-    } catch (err) {
-      // Ignore error if column already exists
-    }
-
-    try {
-      await db.run("ALTER TABLE users ADD COLUMN last_login TEXT");
-    } catch (err) {
-      // Ignore
-    }
+    try { await db.run("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'"); } catch (e) { }
+    try { await db.run("ALTER TABLE users ADD COLUMN last_login TEXT"); } catch (e) { }
+    try { await db.run("ALTER TABLE users ADD COLUMN name TEXT"); } catch (e) { }
+    try { await db.run("ALTER TABLE users ADD COLUMN reset_token TEXT"); } catch (e) { }
+    try { await db.run("ALTER TABLE users ADD COLUMN reset_token_expiry TEXT"); } catch (e) { }
+    try { await db.run("ALTER TABLE interviews ADD COLUMN type TEXT DEFAULT 'standard'"); } catch (e) { }
+    try { await db.run("ALTER TABLE interviews ADD COLUMN feedbacks TEXT DEFAULT '[]'"); } catch (e) { }
+    try { await db.run("ALTER TABLE resume_reviews ADD COLUMN file_path TEXT"); } catch (e) { }
   }
 
   return db;

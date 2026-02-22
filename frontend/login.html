@@ -4,78 +4,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - AI Interviewer</title>
+    <title>Login - AI Interview Coach</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <!-- Shared CSS only -->
-    <style>
-        /* Minimal layout override if needed, mostly handled by style.css */
-    </style>
 </head>
 
-<body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="index.html" class="logo">AI Interview Coach</a>
-            <div class="nav-links">
-                <a href="index.html">Home</a>
-            </div>
+<body class="auth-page">
+
+    <!-- Theme Toggle -->
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle Dark Mode"
+        style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 10;">
+        <span>🌙</span>
+    </button>
+
+    <a href="index.html"
+        style="position: absolute; top: 1.5rem; left: 1.5rem; color: var(--text-muted); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: color 0.2s; z-index: 10;">
+        <span style="font-size: 1.2rem;">&larr;</span> Home
+    </a>
+
+    <div class="auth-card">
+        <div class="text-center mb-4">
+            <div class="auth-logo">👋</div>
+            <h2>Welcome Back</h2>
+            <p>Sign in to continue your progress</p>
         </div>
-    </nav>
 
-    <div class="app-container auth-container">
-        <h2>Welcome Back</h2>
-        <p class="subtitle">Login to access your dashboard</p>
-
-        <div class="card auth-card">
-            <div class="form-group">
+        <form id="loginForm">
+            <div class="auth-input-group">
                 <label for="email">Email Address</label>
-                <input type="email" id="email" class="input-field" placeholder="you@example.com" required>
+                <input type="email" id="email" class="auth-input" placeholder="you@example.com" required>
             </div>
 
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" class="input-field" placeholder="••••••••" required>
+            <div class="auth-input-group" style="margin-bottom: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                    <label for="password" style="margin: 0;">Password</label>
+                    <a href="forgot-password.html"
+                        style="font-size: 0.8rem; color: var(--primary); font-weight: 600; text-decoration: none;">Forgot
+                        Password?</a>
+                </div>
+                <input type="password" id="password" class="auth-input" placeholder="••••••••" required>
             </div>
 
-            <button onclick="login()" class="btn btn-primary">Sign In</button>
-            <div id="error-msg" class="error-message"></div>
-        </div>
+            <button type="submit" class="btn btn-primary auth-btn">Sign In</button>
+        </form>
 
-        <div class="auth-links">
-            Don't have an account? <a href="signup.html">Sign up</a>
+        <div class="auth-footer text-center">
+            <p style="margin: 0; color: var(--text-muted);">Don't have an account? <a href="signup.html"
+                    style="color: var(--primary); font-weight: 700; text-decoration: none;">Sign up here</a></p>
         </div>
     </div>
 
-    <script>
-        if (localStorage.getItem('token')) {
-            window.location.href = 'dashboard.html';
-        }
+    <!-- Main JS (for Toasts) -->
+    <script src="js/main.js"></script>
 
-        async function login() {
+    <script>
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5000'
+            : '';
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const errorMsg = document.getElementById('error-msg');
+            const btn = e.target.querySelector('button');
 
-            errorMsg.style.display = 'none';
-
-            if (!email || !password) {
-                errorMsg.innerText = "Please fill in all fields";
-                errorMsg.style.display = 'block';
-                return;
-            }
+            btn.disabled = true;
+            btn.innerText = "Signing in...";
 
             try {
-                const button = document.querySelector('button');
-                button.disabled = true;
-                button.innerText = "Signing in...";
-
-                const getApiBaseUrl = () => {
-                    if (window.location.protocol === 'file:') return 'http://localhost:5000';
-                    if (window.location.hostname === 'localhost' && window.location.port !== '5000') return 'http://localhost:5000';
-                    return '';
-                };
-                const API_BASE_URL = getApiBaseUrl();
-
                 const res = await fetch(`${API_BASE_URL}/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -85,23 +82,24 @@
                 const data = await res.json();
 
                 if (res.ok) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('userEmail', data.email);
-                    localStorage.setItem('userRole', data.role);
-                    window.location.href = 'dashboard.html';
+                    sessionStorage.setItem('token', data.token);
+                    sessionStorage.setItem('userRole', data.role);
+                    sessionStorage.setItem('userEmail', email);
+
+                    showToast('Login successful! Redirecting...', 'success');
+                    setTimeout(() => window.location.href = 'dashboard.html', 1000);
                 } else {
-                    errorMsg.innerText = data.error || "Login failed";
-                    errorMsg.style.display = 'block';
-                    button.disabled = false;
-                    button.innerText = "Sign In";
+                    showToast(data.error || 'Login failed', 'error');
+                    btn.disabled = false;
+                    btn.innerText = "Sign In";
                 }
             } catch (err) {
-                errorMsg.innerText = "Server error. Is the backend running?";
-                errorMsg.style.display = 'block';
-                button.disabled = false;
-                button.innerText = "Sign In";
+                console.error(err);
+                showToast('Connection error. Is the server running?', 'error');
+                btn.disabled = false;
+                btn.innerText = "Sign In";
             }
-        }
+        });
     </script>
 </body>
 

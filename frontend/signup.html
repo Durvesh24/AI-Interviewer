@@ -4,85 +4,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up - AI Interviewer</title>
+    <title>Sign Up - AI Interview Coach</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <!-- Shared CSS only -->
-    <style>
-        /* Minimal layout override if needed, mostly handled by style.css */
-    </style>
 </head>
 
-<body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="index.html" class="logo">AI Interview Coach</a>
-            <div class="nav-links">
-                <a href="index.html">Home</a>
-            </div>
+<body class="auth-page">
+
+    <!-- Theme Toggle -->
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle Dark Mode"
+        style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 10;">
+        <span>🌙</span>
+    </button>
+
+    <a href="index.html"
+        style="position: absolute; top: 1.5rem; left: 1.5rem; color: var(--text-muted); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: color 0.2s; z-index: 10;">
+        <span style="font-size: 1.2rem;">&larr;</span> Home
+    </a>
+
+    <div class="auth-card">
+        <div class="text-center mb-4">
+            <div class="auth-logo">🚀</div>
+            <h2>Create Account</h2>
+            <p>Join to track your progress</p>
         </div>
-    </nav>
 
-    <div class="app-container auth-container">
-        <h2>Create Account</h2>
-        <p class="subtitle">Join to track your progress</p>
-
-        <div class="card auth-card">
-            <div class="form-group">
+        <form id="signupForm">
+            <div class="auth-input-group">
                 <label for="email">Email Address</label>
-                <input type="email" id="email" class="input-field" placeholder="you@example.com" required>
+                <input type="email" id="email" class="auth-input" placeholder="you@example.com" required>
             </div>
 
-            <div class="form-group">
+            <div class="auth-input-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" class="input-field" placeholder="Create a password" required>
+                <input type="password" id="password" class="auth-input" placeholder="Create a password" required>
             </div>
 
             <!-- Optional Admin Code -->
-            <div class="form-group" style="margin-top:20px; border-top:1px solid var(--card-border); padding-top:20px;">
-                <label for="adminCode" style="font-size:0.8rem;">Admin Code (Optional)</label>
-                <input type="text" id="adminCode" class="input-field" placeholder="Enter secret code if you have one">
+            <div class="auth-input-group"
+                style="margin-top: 0.5rem; border-top: 1px dashed var(--border-color); padding-top: 1.25rem;">
+                <label for="adminCode" style="color: var(--text-muted);">Admin Code (Optional)</label>
+                <input type="text" id="adminCode" class="auth-input" placeholder="Enter secret code"
+                    style="background: var(--bg-body);">
             </div>
 
-            <button onclick="signup()" class="btn btn-success">Sign Up</button>
-            <div id="error-msg" class="error-message"></div>
-        </div>
+            <button type="submit" class="btn btn-primary auth-btn">Create Account</button>
+        </form>
 
-        <div class="auth-links">
-            Already have an account? <a href="login.html">Login</a>
+        <div class="auth-footer text-center">
+            <p style="margin: 0; color: var(--text-muted);">Already have an account? <a href="login.html"
+                    style="color: var(--primary); font-weight: 700; text-decoration: none;">Sign in here</a></p>
         </div>
     </div>
 
-    <script>
-        if (localStorage.getItem('token')) {
-            window.location.href = 'dashboard.html';
-        }
+    <!-- Main JS (for Toasts) -->
+    <script src="js/main.js"></script>
 
-        async function signup() {
+    <script>
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5000'
+            : '';
+
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const adminCode = document.getElementById('adminCode').value;
-            const errorMsg = document.getElementById('error-msg');
+            const btn = e.target.querySelector('button');
 
-            errorMsg.style.display = 'none';
-
-            if (!email || !password) {
-                errorMsg.innerText = "Please fill in all fields";
-                errorMsg.style.display = 'block';
-                return;
-            }
+            btn.disabled = true;
+            btn.innerText = "Creating account...";
 
             try {
-                const button = document.querySelector('button');
-                button.disabled = true;
-                button.innerText = "Creating account...";
-
-                const getApiBaseUrl = () => {
-                    if (window.location.protocol === 'file:') return 'http://localhost:5000';
-                    if (window.location.hostname === 'localhost' && window.location.port !== '5000') return 'http://localhost:5000';
-                    return '';
-                };
-                const API_BASE_URL = getApiBaseUrl();
-
                 const res = await fetch(`${API_BASE_URL}/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -92,21 +86,20 @@
                 const data = await res.json();
 
                 if (res.ok) {
-                    alert("Account created! Please login.");
-                    window.location.href = 'login.html';
+                    showToast('Account created successfully!', 'success');
+                    setTimeout(() => window.location.href = 'login.html', 1500);
                 } else {
-                    errorMsg.innerText = data.error || "Registration failed";
-                    errorMsg.style.display = 'block';
-                    button.disabled = false;
-                    button.innerText = "Sign Up";
+                    showToast(data.error || 'Registration failed', 'error');
+                    btn.disabled = false;
+                    btn.innerText = "Create Account";
                 }
             } catch (err) {
-                errorMsg.innerText = "Server error. Is the backend running?";
-                errorMsg.style.display = 'block';
-                button.disabled = false;
-                button.innerText = "Sign Up";
+                console.error(err);
+                showToast('Connection error.', 'error');
+                btn.disabled = false;
+                btn.innerText = "Create Account";
             }
-        }
+        });
     </script>
 </body>
 

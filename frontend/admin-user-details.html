@@ -291,6 +291,13 @@
                         <!-- Timeline Items Injected Here -->
                     </div>
                 </div>
+
+                <div class="section-card">
+                    <h2 class="section-title">Resume Reviews History</h2>
+                    <div id="resumeReviewTimeline">
+                        <!-- Timeline Items Injected Here -->
+                    </div>
+                </div>
             </div>
 
             <!-- Right Column: Quick Insights -->
@@ -330,8 +337,8 @@
     </div>
 
     <script>
-        const token = localStorage.getItem('token');
-        const role = localStorage.getItem('userRole');
+        const token = sessionStorage.getItem('token');
+        const role = sessionStorage.getItem('userRole');
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('id');
 
@@ -424,10 +431,86 @@
                 }).join('');
             }
 
+            // Resume Reviews Timeline
+            const resumeContainer = document.getElementById('resumeReviewTimeline');
+            const reviews = data.resumeReviews || [];
+
+            if (reviews.length === 0) {
+                if (resumeContainer) resumeContainer.innerHTML = '<p class="text-muted">No resume reviews found.</p>';
+            } else {
+                if (resumeContainer) {
+                    resumeContainer.innerHTML = reviews.map(r => {
+                        const pdfLink = r.file_path
+                            ? `<a href="/uploads/${r.file_path}" target="_blank" style="color:var(--primary-color);text-decoration:none;">View PDF</a>`
+                            : '';
+
+                        return `
+                        <div class="timeline-item">
+                            <span class="timeline-date">${new Date(r.date).toLocaleString()}</span>
+                            <div class="timeline-content">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                    <strong>${r.role}</strong>
+                                    <span style="color: ${r.ats_score >= 80 ? '#10b981' : r.ats_score >= 60 ? '#f59e0b' : '#ef4444'}">ATS: ${r.ats_score}</span>
+                                </div>
+                                <div style="display: flex; gap: 10px; font-size: 0.85rem;">
+                                    ${pdfLink}
+                                    <button onclick="viewResumeJSON('${encodeURIComponent(JSON.stringify(r))}')" style="background:none; border:none; color:var(--primary-color); cursor:pointer;">View Analysis</button>
+                                    <button onclick="deleteResumeReview('${r.id}')" style="background:none; border:none; color:#f87171; cursor:pointer;">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('');
+                }
+            }
+
             // Chart
             renderChart(interviews);
 
             document.getElementById('loader').style.display = 'none';
+        }
+
+        function viewResumeJSON(reviewStr) {
+            const review = JSON.parse(decodeURIComponent(reviewStr));
+            // Parse internal data if string
+            if (typeof review.data === 'string') review.data = JSON.parse(review.data);
+
+            // Construct details HTML similar to dashboard
+            // For simplicity, reusing the interview details modal logic but slightly different content
+            const modal = document.getElementById('interviewDetailsModal');
+            const content = document.getElementById('detailsContent');
+
+            const data = review.data;
+
+            content.innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: var(--primary-color);">${review.role}</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">
+                        Analyzed: ${new Date(review.date).toLocaleString()}
+                    </p>
+                </div>
+                <div style="text-align: center; margin-bottom: 30px;">
+                     <div class="score-badge" style="font-size: 1.5rem; padding: 15px 30px; border: 1px solid var(--card-border); border-radius: 12px; display:inline-block; color: ${review.ats_score >= 80 ? '#10b981' : '#f59e0b'}">
+                         ATS Score: ${review.ats_score}/100
+                     </div>
+                </div>
+                 <div style="margin-bottom: 20px;">
+                     <h4 style="color: #10b981; margin-bottom: 10px;">Matched Keywords</h4>
+                     <p>${data.keywordsMatched ? data.keywordsMatched.join(', ') : 'None'}</p>
+                 </div>
+                 <div style="margin-bottom: 20px;">
+                     <h4 style="color: #ef4444; margin-bottom: 10px;">Missing Skills</h4>
+                     <p>${data.missingSkills ? data.missingSkills.join(', ') : 'None'}</p>
+                 </div>
+                 <div>
+                     <h4 style="color: #e5e7eb; margin-bottom: 10px;">Formatting Issues</h4>
+                     <ul>${data.formattingIssues ? data.formattingIssues.map(i => `<li>${i}</li>`).join('') : '<li>None</li>'}</ul>
+                 </div>
+             `;
+
+            modal.classList.add('active');
         }
 
         function renderChart(interviews) {
@@ -559,6 +642,28 @@
             }
         }
 
+        async function deleteResumeReview(id) {
+            if (!confirm("Are you sure you want to delete this resume review? This action cannot be undone.")) return;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/admin/resume-reviews/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (res.ok) {
+                    alert("Resume review deleted successfully.");
+                    location.reload();
+                } else {
+                    const err = await res.json();
+                    alert("Failed to delete: " + (err.error || "Unknown error"));
+                }
+            } catch (e) {
+                console.error(e);
+                alert("An error occurred.");
+            }
+        }
+
         function closeDetailsModal() {
             document.getElementById('interviewDetailsModal').classList.remove('active');
         }
@@ -570,7 +675,7 @@
 
 
         function logout() {
-            localStorage.clear();
+            sessionStorage.clear();
             window.location.href = 'index.html';
         }
 
