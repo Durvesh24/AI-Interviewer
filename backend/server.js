@@ -50,6 +50,17 @@ app.use('/uploads', express.static(path.join(__dirname, "uploads")));
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
+// Password strength validator
+const isStrongPassword = (pwd) => {
+  if (!pwd || pwd.length < 8) return false;
+  if (!/[A-Z]/.test(pwd)) return false; // uppercase
+  if (!/[a-z]/.test(pwd)) return false; // lowercase
+  if (!/[0-9]/.test(pwd)) return false; // digit
+  if (!/[^A-Za-z0-9]/.test(pwd)) return false; // special char
+  return true;
+};
+const PASSWORD_RULE_MSG = "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a special character.";
+
 // Helper to sanitize API Key
 const getHfKey = () => {
   let key = process.env.HF_API_KEY;
@@ -99,6 +110,7 @@ app.post("/register", async (req, res) => {
   try {
     const { email, password, adminCode } = req.body;
     if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+    if (!isStrongPassword(password)) return res.status(400).json({ error: PASSWORD_RULE_MSG });
 
     const db = await getDb();
     const existingUser = await db.get("SELECT * FROM users WHERE email = ?", [email]);
@@ -188,7 +200,7 @@ app.post("/reset-password", async (req, res) => {
   try {
     const { token, newPassword } = req.body;
     if (!token || !newPassword) return res.status(400).json({ error: "Token and new password are required." });
-    if (newPassword.length < 6) return res.status(400).json({ error: "Password must be at least 6 characters." });
+    if (!isStrongPassword(newPassword)) return res.status(400).json({ error: PASSWORD_RULE_MSG });
 
     const db = await getDb();
     const user = await db.get("SELECT * FROM users WHERE reset_token = ?", [token]);
@@ -254,7 +266,7 @@ app.put("/change-password", authenticateToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) return res.status(400).json({ error: "Both current and new passwords are required." });
-    if (newPassword.length < 6) return res.status(400).json({ error: "New password must be at least 6 characters." });
+    if (!isStrongPassword(newPassword)) return res.status(400).json({ error: PASSWORD_RULE_MSG });
 
     const db = await getDb();
     const user = await db.get("SELECT * FROM users WHERE id = ?", [req.user.id]);
@@ -659,12 +671,12 @@ app.post("/answer", authenticateToken, async (req, res) => {
     if (!answer || answer.trim() === "") return res.status(400).json({ error: "Answer is required" });
 
     const model = "Qwen/Qwen2.5-72B-Instruct";
-    const systemPrompt = "You are an interview coach.";
+    const systemPrompt = "You are an interview coach. Provide short, constructive feedback.";
     const userPrompt = `Question: ${question}
     Answer: ${answer}
     Evaluate briefly:
     Score (out of 10): <number>
-    Feedback: <sentence>`;
+    Feedback: <1-2 short sentences, including a specific pointer/tip on how to improve>`;
 
     const result = await hf.chatCompletion({
       model: model,

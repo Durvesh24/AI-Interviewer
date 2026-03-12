@@ -264,6 +264,20 @@
             <div id="modalBody">
                 <!-- Content injected here -->
             </div>
+            
+            <!-- History section added at bottom of modal -->
+            <div id="modalHistorySection" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
+                    <div>
+                        <h4 style="margin: 0;">Your Progress: <span id="historyRoleName" style="color: var(--primary);"></span></h4>
+                        <p id="historyImprovementText" style="margin: 0.25rem 0 0; font-size: 0.9rem; font-weight: 500;"></p>
+                    </div>
+                </div>
+                <div style="background: var(--bg-body); padding: 1rem; border-radius: var(--radius-md);">
+                    <canvas id="modalHistoryChart" style="max-height: 200px;"></canvas>
+                </div>
+            </div>
+
             <div style="margin-top: 1.5rem; text-align: right;">
                 <button onclick="closeModal()" class="btn btn-secondary">Close</button>
             </div>
@@ -278,6 +292,7 @@
         const role = sessionStorage.getItem('userRole');
         const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : '';
         let allInterviewsData = []; // Store for performance charts
+        let modalChartInstance = null; // Store modal chart instance so it can be destroyed
 
         if (!token) { window.location.href = 'login.html'; }
         document.getElementById('user-display').innerText = sessionStorage.getItem('userEmail') || 'User';
@@ -647,8 +662,15 @@
 
                 document.getElementById('modalTitle').innerText = `Interview: ${data.role} (${new Date(data.date).toLocaleDateString()})`;
 
+                // Determine overall score for this specific interview
+                const validScores = data.scores.filter(s => typeof s === 'number');
+                const avgScore = validScores.length ? (validScores.reduce((a, b) => a + b, 0) / validScores.length).toFixed(1) : 0;
+
                 // Build Q&A HTML (no ideal answers yet)
-                let content = `<div id="qa-container" style="display:flex; flex-direction:column; gap: 1.5rem;">`;
+                let content = `<div style="margin-bottom: 1.5rem;">
+                                 <strong>Overall Score:</strong> <span class="score-badge ${avgScore >= 7 ? 'high' : (avgScore >= 5 ? 'med' : 'low')}" style="font-size: 1.1rem; padding: 0.2rem 0.6rem;">${avgScore}/10</span>
+                               </div>
+                               <div id="qa-container" style="display:flex; flex-direction:column; gap: 1.5rem;">`;
                 data.questions.forEach((q, i) => {
                     const score = data.scores[i] !== undefined ? data.scores[i] : '-';
                     const answer = data.answers[i] || '<span style="color:var(--text-muted); font-style:italic;">No answer recorded</span>';
@@ -680,6 +702,9 @@
 
                 document.getElementById('modalBody').innerHTML = content;
                 document.getElementById('detailsModal').classList.remove('hidden');
+
+                // Render the History Chart for this specific role
+                renderModalHistoryChart(data.role, data.id);
 
             } catch (e) {
                 console.error(e);
@@ -714,6 +739,119 @@
                 btn.innerText = '💡 Show Ideal Answers';
                 showToast('Failed to load ideal answers.', 'error');
             }
+        }
+
+        function renderModalHistoryChart(targetRole, currentInterviewId) {
+            const historySection = document.getElementById('modalHistorySection');
+            
+            // Filter all interviews (any role) that have scores, sorted chronologically from oldest to newest
+            const roleHistory = allInterviewsData
+                .filter(i => i.scores && i.scores.length > 0)
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // We only show history if there's more than 1 interview overall
+            if (roleHistory.length <= 1) {
+                historySection.style.display = 'none';
+                return;
+            }
+
+            historySection.style.display = 'block';
+            document.getElementById('historyRoleName').innerText = "Overall Progression";
+
+            // Arrays for Chart.js
+            const labels = [];
+            const dataPoints = [];
+            const pointColors = [];
+            const pointRadiuses = [];
+            
+            let currentScore = 0;
+            let currentIdx = -1;
+
+            roleHistory.forEach((interview, idx) => {
+                const dateStr = new Date(interview.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                const avg = (interview.scores.reduce((a, b) => a + b, 0) / interview.scores.length).toFixed(1);
+                
+                labels.push(dateStr);
+                dataPoints.push(parseFloat(avg));
+                
+                // Highlight the currently viewed interview
+                if (interview.id.toString() === currentInterviewId.toString()) {
+                    pointColors.push('#10B981'); // Emerald green for current
+                    pointRadiuses.push(6);
+                    currentScore = parseFloat(avg);
+                    currentIdx = idx;
+                } else {
+                    pointColors.push('#4F46E5'); // Primary color for others
+                    pointRadiuses.push(4);
+                }
+            });
+
+            // Calculate Improvement Text if this isn't the very first attempt ever
+            const improvementTextEl = document.getElementById('historyImprovementText');
+            if (currentIdx > 0) {
+                const previousScore = dataPoints[currentIdx - 1];
+                const delta = (currentScore - previousScore).toFixed(1);
+                
+                if (delta > 0) {
+                    improvementTextEl.innerHTML = `<span style="color: #10B981;">↑ Improved by ${delta} points</span> since previous attempt`;
+                } else if (delta < 0) {
+                    improvementTextEl.innerHTML = `<span style="color: #EF4444;">↓ Dropped by ${Math.abs(delta)} points</span> since previous attempt`;
+                } else {
+                    improvementTextEl.innerHTML = `<span style="color: var(--text-muted);">- Score remained the same</span> as previous attempt`;
+                }
+            } else {
+                improvementTextEl.innerHTML = `<span style="color: var(--text-muted);">This was your first attempt for this role.</span>`;
+            }
+
+            // Render Chart
+            const ctx = document.getElementById('modalHistoryChart').getContext('2d');
+            
+            if (modalChartInstance) {
+                modalChartInstance.destroy();
+            }
+
+            modalChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Avg Score',
+                        data: dataPoints,
+                        borderColor: 'rgba(79, 70, 229, 0.5)',
+                        backgroundColor: 'rgba(79, 70, 229, 0.05)',
+                        borderWidth: 2,
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: pointRadiuses,
+                        pointHoverRadius: 7,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const roleName = roleHistory[context.dataIndex].role;
+                                    return ` ${roleName} - Score: ${context.parsed.y}/10`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 10,
+                            ticks: { stepSize: 2 }
+                        }
+                    }
+                }
+            });
         }
 
         async function viewResumeDetails(id) {

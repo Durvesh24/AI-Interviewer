@@ -741,3 +741,110 @@ label {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   PASSWORD STRENGTH METER & TOGGLE — Added for password keeper
+   ============================================================ */
+
+/* Wrapper to position the eye icon inside the input */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper .auth-input,
+.password-wrapper .input-field {
+  padding-right: 2.8rem;
+  /* leave space for the toggle button */
+}
+
+.toggle-password {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  padding: 0.25rem;
+  line-height: 1;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.toggle-password:hover {
+  color: var(--primary);
+}
+
+/* ---- Strength Bar ---- */
+.strength-bar-wrapper {
+  height: 5px;
+  background: var(--border-color);
+  border-radius: var(--radius-full);
+  margin-top: 0.55rem;
+  overflow: hidden;
+}
+
+.strength-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: var(--radius-full);
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+.strength-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.3rem;
+  height: 1rem;
+  transition: color 0.3s;
+}
+
+/* ---- Strength colors ---- */
+.strength-weak   { background: #EF4444; }
+.strength-fair   { background: #F59E0B; }
+.strength-good   { background: #84CC16; }
+.strength-strong { background: #10B981; }
+
+.label-weak   { color: #EF4444; }
+.label-fair   { color: #F59E0B; }
+.label-good   { color: #84CC16; }
+.label-strong { color: #10B981; }
+
+/* ---- Requirement Checklist ---- */
+.req-list {
+  list-style: none;
+  margin: 0.6rem 0 0.25rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 0.5rem;
+}
+
+.req-item {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: color 0.2s;
+}
+
+.req-item::before {
+  content: '✕';
+  font-size: 0.7rem;
+  color: #EF4444;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.req-item.met {
+  color: #10B981;
+}
+
+.req-item.met::before {
+  content: '✓';
+  color: #10B981;
+}
