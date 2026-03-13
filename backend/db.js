@@ -47,12 +47,26 @@ export async function getDb() {
   if (process.env.DATABASE_URL) {
     // --- POSTGRESQL ("PROD" / RENDER) ---
     console.log("Connecting to PostgreSQL...");
+    // Resolve hostname to IPv4 explicitly to avoid ENETUNREACH on Render (IPv6 issue)
+    let connectionString = process.env.DATABASE_URL;
+    try {
+      const parsedUrl = new URL(connectionString);
+      const { resolve4 } = await import('dns/promises');
+      const ipv4Addresses = await resolve4(parsedUrl.hostname);
+      if (ipv4Addresses && ipv4Addresses.length > 0) {
+        parsedUrl.hostname = ipv4Addresses[0];
+        connectionString = parsedUrl.toString();
+        console.log(`Resolved ${process.env.DATABASE_URL.split('@')[1]?.split('/')[0]} -> IPv4: ${ipv4Addresses[0]}`);
+      }
+    } catch (dnsErr) {
+      console.warn('DNS resolve4 failed, using original connection string:', dnsErr.message);
+    }
+
     const pool = new pg.Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString,
       ssl: {
         rejectUnauthorized: false // Required for Render/some cloud DBs
-      },
-      family: 4 // Force IPv4 to avoid ENETUNREACH on Render
+      }
     });
 
     // Test connection
