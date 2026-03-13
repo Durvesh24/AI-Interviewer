@@ -51,15 +51,18 @@ export async function getDb() {
     let connectionString = process.env.DATABASE_URL;
     try {
       const parsedUrl = new URL(connectionString);
+      console.log(`DB Hostname to resolve: ${parsedUrl.hostname} Port: ${parsedUrl.port}`);
       const { resolve4 } = await import('dns/promises');
       const ipv4Addresses = await resolve4(parsedUrl.hostname);
       if (ipv4Addresses && ipv4Addresses.length > 0) {
         parsedUrl.hostname = ipv4Addresses[0];
         connectionString = parsedUrl.toString();
-        console.log(`Resolved ${process.env.DATABASE_URL.split('@')[1]?.split('/')[0]} -> IPv4: ${ipv4Addresses[0]}`);
+        console.log(`Resolved to IPv4: ${ipv4Addresses[0]}`);
+      } else {
+        console.warn('No IPv4 addresses found, using original URL');
       }
     } catch (dnsErr) {
-      console.warn('DNS resolve4 failed, using original connection string:', dnsErr.message);
+      console.error('DNS resolve4 failed:', dnsErr.message, '- using original connection string (may use IPv6)');
     }
 
     const pool = new pg.Pool({
