@@ -1,7 +1,4 @@
 <!DOCTYPE html>
-<html lang="en">
-
-<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - AI Interviewer</title>
@@ -13,6 +10,12 @@
     <!-- jsPDF for Reports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js"></script>
+    <!-- Highlight.js for Code Formatting -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
         /* Dashboard specific overrides */
@@ -61,45 +64,126 @@
             background: transparent;
         }
 
-        /* Stats Grid */
+        /* Stats Grid - Premium Interactive */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 1.5rem;
             margin-bottom: 3rem;
+            perspective: 1000px;
         }
 
         .stat-card {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 1.25rem;
             padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            border-radius: var(--radius-lg);
+            background: linear-gradient(145deg, var(--bg-card), rgba(255, 255, 255, 0.4));
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1;
+        }
+
+        html[data-theme="dark"] .stat-card {
+             background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9));
+             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: inherit;
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.15) 0%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            z-index: -1;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(79, 70, 229, 0.15);
+            border-color: rgba(79, 70, 229, 0.3);
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
         }
 
         .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            background: rgba(var(--primary), 0.1);
-            /* fallback */
-            background: var(--bg-body);
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.15), rgba(236, 72, 153, 0.15));
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.75rem;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.4s ease;
+            position: relative;
+        }
+        
+        html[data-theme="dark"] .stat-icon {
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-icon::after {
+            content: '';
+            position: absolute;
+            top: -2px; left: -2px; right: -2px; bottom: -2px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 18px;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            filter: blur(8px);
+        }
+        
+        .stat-card:hover .stat-icon {
+            transform: scale(1.15) rotate(5deg);
+        }
+
+        .stat-card:hover .stat-icon::after {
+            opacity: 0.6;
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            flex: 1;
         }
 
         .stat-info h4 {
             margin: 0;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: var(--text-muted);
             text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 700;
         }
 
         .stat-info .value {
-            font-size: 1.75rem;
-            font-weight: 700;
+            font-size: 2rem;
+            font-weight: 800;
             color: var(--text-main);
+            background: linear-gradient(90deg, var(--text-main), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover .stat-info .value {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
     </style>
 </head>
@@ -133,7 +217,7 @@
         </div>
     </nav>
 
-    <div class="app-container" style="margin-top: 2rem; margin-bottom: 4rem;">
+    <div class="app-container fade-in-up stagger-1" style="margin-top: 2rem; margin-bottom: 4rem;">
         <header class="dashboard-header">
             <div class="welcome-text">
                 <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">My Dashboard</h1>
@@ -143,7 +227,7 @@
         </header>
 
         <!-- Learner Stats Section -->
-        <section id="learner-stats" class="hidden">
+        <section id="learner-stats" class="hidden fade-in-up stagger-2">
             <div class="stats-grid">
                 <div class="card stat-card">
                     <div class="stat-icon">📊</div>
@@ -217,9 +301,23 @@
         <!-- Performance Tab -->
         <section id="performance-view" class="hidden">
             <h3 style="margin-bottom: 1.5rem;">Performance Analytics</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
+
+            <!-- Overall Progression Chart -->
+            <div id="dashboardHistorySection" class="card" style="margin-bottom: 2rem; display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
+                    <div>
+                        <h4 style="margin: 0; color: var(--primary);">Overall Progression (<span id="historyRoleName">All Roles</span>)</h4>
+                        <p id="historyImprovementText" style="margin: 0.25rem 0 0; font-size: 0.9rem; font-weight: 500;"></p>
+                    </div>
+                </div>
+                <div style="background: var(--bg-body); padding: 1rem; border-radius: var(--radius-md); height: 320px; position: relative;">
+                    <canvas id="dashboardHistoryChart"></canvas>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
                 <div class="card">
-                    <h4 style="margin-bottom: 1rem;">Progress Over Time</h4>
+                    <h4 style="margin-bottom: 1rem;">Overall Performance (Over Time)</h4>
                     <canvas id="performanceChart"></canvas>
                 </div>
                 <div class="card">
@@ -264,19 +362,6 @@
             <div id="modalBody">
                 <!-- Content injected here -->
             </div>
-            
-            <!-- History section added at bottom of modal -->
-            <div id="modalHistorySection" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
-                    <div>
-                        <h4 style="margin: 0;">Your Progress: <span id="historyRoleName" style="color: var(--primary);"></span></h4>
-                        <p id="historyImprovementText" style="margin: 0.25rem 0 0; font-size: 0.9rem; font-weight: 500;"></p>
-                    </div>
-                </div>
-                <div style="background: var(--bg-body); padding: 1rem; border-radius: var(--radius-md);">
-                    <canvas id="modalHistoryChart" style="max-height: 200px;"></canvas>
-                </div>
-            </div>
 
             <div style="margin-top: 1.5rem; text-align: right;">
                 <button onclick="closeModal()" class="btn btn-secondary">Close</button>
@@ -293,9 +378,42 @@
         const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : '';
         let allInterviewsData = []; // Store for performance charts
         let modalChartInstance = null; // Store modal chart instance so it can be destroyed
+        let historyChartInstance = null;
 
         if (!token) { window.location.href = 'login.html'; }
         document.getElementById('user-display').innerText = sessionStorage.getItem('userEmail') || 'User';
+
+        // Ripple Effect - event delegation, no duplicate listeners
+        document.body.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn');
+            if (!btn) return;
+            const existing = btn.querySelector('.ripple');
+            if (existing) existing.remove();
+            const circle = document.createElement('span');
+            // Use offsetX/offsetY for position relative to the button
+            const x = e.target.closest('.btn') === btn ? e.offsetX : (btn.offsetWidth / 2);
+            const y = e.target.closest('.btn') === btn ? e.offsetY : (btn.offsetHeight / 2);
+            circle.style.left = `${x}px`;
+            circle.style.top  = `${y}px`;
+            circle.classList.add('ripple');
+            btn.appendChild(circle);
+        });
+
+        // Animated Counter Function
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const current = start + progress * (end - start);
+                // format float vs int
+                obj.innerHTML = Number.isInteger(end) ? Math.floor(current) : current.toFixed(1);
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
 
         if (role === 'admin') {
             document.querySelector('.welcome-text h1').innerText = "Admin Control Center";
@@ -321,7 +439,7 @@
             // Load data if needed
             if (tabName === 'users') fetchUsers();
             if (tabName === 'resume-reviews') fetchResumeReviews();
-            if (tabName === 'performance') renderPerformanceCharts();
+            if (tabName === 'performance') { renderPerformanceCharts(); renderDashboardHistoryChart(allInterviewsData); }
         }
 
         async function fetchInterviews() {
@@ -348,6 +466,7 @@
                 if (role !== 'admin') {
                     document.getElementById('learner-stats').classList.remove('hidden');
                     calculateLearnerStats(data);
+                    // Chart moved to performance tab
                 }
 
                 allInterviewsData = data;
@@ -503,16 +622,26 @@
             }
         }
 
-        // Stats Calculation
+        // Stats Calculation with Animation
         function calculateLearnerStats(data) {
-            document.getElementById('stat-total').innerText = data.length;
+            const totalEl = document.getElementById('stat-total');
+            const avgEl = document.getElementById('stat-avg');
+            const highEl = document.getElementById('stat-high');
+
+            animateValue(totalEl, 0, data.length, 1000);
+
             if (data.length > 0) {
                 const allScores = data.flatMap(i => i.scores || []);
                 if (allScores.length) {
-                    const avg = (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1);
-                    document.getElementById('stat-avg').innerText = avg;
-                    document.getElementById('stat-high').innerText = Math.max(...allScores);
+                    const validScores = allScores.filter(s => typeof s === 'number');
+                    const avg = validScores.length ? validScores.reduce((a, b) => a + b, 0) / validScores.length : 0;
+                    const max = validScores.length ? Math.max(...validScores) : 0;
+
+                    animateValue(avgEl, 0, avg, 1200);
+                    animateValue(highEl, 0, max, 1000);
                 }
+            const roleEl = document.getElementById('stat-role');
+            if (data.length > 0 && roleEl) { const roleCount = {}; data.forEach(i => { roleCount[i.role] = (roleCount[i.role]||0)+1; }); const topRole = Object.entries(roleCount).sort((a,b)=>b[1]-a[1])[0]; roleEl.innerHTML = topRole ? topRole[0] : '-'; }
             }
         }
 
@@ -582,7 +711,7 @@
                             <div style="font-size: 0.85rem; color: var(--text-muted);">Role: ${u.role} | Last Login: ${u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never'}</div>
                         </div>
                         <div style="display: flex; gap: 0.5rem;">
-                            ${u.role !== 'admin' ? `<button onclick="deleteItem('users', '${u.id}')" class="btn btn-secondary" style="color:var(--error); border-color:var(--error); padding: 0.25rem 0.5rem;">Delete</button>` : ''}
+                            <button onclick="deleteItem('users', '${u.id}')" class="btn btn-secondary" style="color:var(--error); border-color:var(--error); padding: 0.25rem 0.5rem;">Delete</button>
                         </div>
                     </div>
                 `).join('');
@@ -608,8 +737,14 @@
 
         function renderPerformanceCharts() {
             if (allInterviewsData.length === 0) {
-                document.getElementById('performanceChart').parentElement.innerHTML = '<p style="color:var(--text-muted);text-align:center;">No interview data yet.</p>';
-                document.getElementById('rolePerformanceChart').parentElement.innerHTML = '';
+                const roleChart = document.getElementById('rolePerformanceChart');
+                if (roleChart) {
+                    roleChart.parentElement.innerHTML = '<p style="color:var(--text-muted);text-align:center;">No interview data yet.</p>';
+                }
+                const perfChart = document.getElementById('performanceChart');
+                if (perfChart) {
+                    perfChart.parentElement.style.display = 'none';
+                }
                 return;
             }
 
@@ -619,15 +754,17 @@
             const timeScores = sorted.map(i => i.scores.length ? (i.scores.reduce((a, b) => a + b, 0) / i.scores.length).toFixed(1) : 0);
 
             const ctx1 = document.getElementById('performanceChart');
-            if (ctx1._chartInstance) ctx1._chartInstance.destroy();
-            ctx1._chartInstance = new Chart(ctx1, {
-                type: 'line',
-                data: {
-                    labels: timeLabels,
-                    datasets: [{ label: 'Avg Score', data: timeScores, borderColor: '#4F46E5', backgroundColor: 'rgba(79,70,229,0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#4F46E5' }]
-                },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10, ticks: { stepSize: 2 } } } }
-            });
+            if (ctx1) {
+                if (ctx1._chartInstance) ctx1._chartInstance.destroy();
+                ctx1._chartInstance = new Chart(ctx1, {
+                    type: 'line',
+                    data: {
+                        labels: timeLabels,
+                        datasets: [{ label: 'Avg Score', data: timeScores, borderColor: '#4F46E5', backgroundColor: 'rgba(79,70,229,0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#4F46E5' }]
+                    },
+                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10, ticks: { stepSize: 2 } } } }
+                });
+            }
 
             // Chart 2: Average score by role
             const roleMap = {};
@@ -688,7 +825,7 @@
                             </div>
                             <div id="ideal-${i}" style="background: rgba(16,185,129,0.07); border-left: 3px solid #10B981; padding: 0.75rem; border-radius: var(--radius-sm); margin-bottom: 0.5rem; display:none;">
                                 <strong style="color:#10B981;">💡 Ideal Answer:</strong>
-                                <p style="margin: 0.5rem 0 0; color: var(--text-main);">Loading...</p>
+                                <div class="ideal-content" style="margin: 0.5rem 0 0; color: var(--text-main);">Loading...</div>
                             </div>
                             <div style="font-size: 0.9rem;">
                                 <strong>Score:</strong> <span class="score-badge ${score >= 7 ? 'high' : (score >= 5 ? 'med' : 'low')}">${score}/10</span>
@@ -703,8 +840,17 @@
                 document.getElementById('modalBody').innerHTML = content;
                 document.getElementById('detailsModal').classList.remove('hidden');
 
-                // Render the History Chart for this specific role
-                renderModalHistoryChart(data.role, data.id);
+                // Format any existing code blocks
+                document.querySelectorAll('#modalBody pre code').forEach(el => { if (!el.dataset.highlighted) hljs.highlightElement(el); });
+
+                // Confetti if amazing score
+                if (parseFloat(avgScore) >= 9) {
+                    confetti({
+                        particleCount: 150,
+                        spread: 70,
+                        origin: { y: 0.6 }
+                    });
+                }
 
             } catch (e) {
                 console.error(e);
@@ -715,7 +861,22 @@
         window.loadIdealAnswers = async function (interviewId, questionCount) {
             const btn = document.getElementById('loadIdealBtn');
             btn.disabled = true;
-            btn.innerText = '⏳ Generating with AI...';
+            btn.innerText = '⏳ Generating...';
+
+            // Show typing indicator
+            for (let i = 0; i < questionCount; i++) {
+                const el = document.getElementById(`ideal-${i}`);
+                if (el) {
+                    el.style.display = 'block';
+                    el.querySelector('.ideal-content').innerHTML = `
+                        <div class="typing-indicator">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>`;
+                }
+            }
+
             try {
                 const res = await fetch(`${API_BASE_URL}/ideal-answers`, {
                     method: 'POST',
@@ -728,70 +889,77 @@
                 for (let i = 0; i < questionCount; i++) {
                     const el = document.getElementById(`ideal-${i}`);
                     if (el) {
-                        el.style.display = 'block';
                         const item = idealAnswers[i] || {};
-                        el.querySelector('p').innerText = item.idealAnswer || 'Not available.';
+                        // Convert markdown-like code blocks if present (primitive regex for highlight.js)
+                        let textRaw = item.idealAnswer || 'Not available.';
+                        textRaw = textRaw.replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>');
+                        el.querySelector('.ideal-content').innerHTML = textRaw;
                     }
                 }
+
+                document.querySelectorAll('#modalBody pre code').forEach(el => { if (!el.dataset.highlighted) hljs.highlightElement(el); });
                 btn.style.display = 'none';
             } catch (e) {
                 btn.disabled = false;
-                btn.innerText = '💡 Show Ideal Answers';
+                btn.innerText = '💡 Try Again';
                 showToast('Failed to load ideal answers.', 'error');
             }
         }
 
-        function renderModalHistoryChart(targetRole, currentInterviewId) {
-            const historySection = document.getElementById('modalHistorySection');
-            
-            // Filter all interviews (any role) that have scores, sorted chronologically from oldest to newest
-            const roleHistory = allInterviewsData
+        function renderDashboardHistoryChart(allData) {
+            const historySection = document.getElementById('dashboardHistorySection');
+
+            // Filter all interviews that have scores, sorted chronologically from oldest to newest
+            const roleHistory = allData
                 .filter(i => i.scores && i.scores.length > 0)
                 .sort((a, b) => new Date(a.date) - new Date(b.date));
 
             // We only show history if there's more than 1 interview overall
+
             if (roleHistory.length <= 1) {
-                historySection.style.display = 'none';
+
+                historySection.style.display = 'block';
+
+                document.getElementById('historyImprovementText').innerHTML = `<span style="color: var(--text-muted); padding-left:0.5rem;">Complete 2+ interviews to see your performance trend.</span>`;
+
+                if (historyChartInstance) historyChartInstance.destroy();
+
                 return;
+
             }
-
-            historySection.style.display = 'block';
-            document.getElementById('historyRoleName').innerText = "Overall Progression";
-
             // Arrays for Chart.js
             const labels = [];
             const dataPoints = [];
             const pointColors = [];
             const pointRadiuses = [];
-            
+
             let currentScore = 0;
-            let currentIdx = -1;
 
             roleHistory.forEach((interview, idx) => {
                 const dateStr = new Date(interview.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                const avg = (interview.scores.reduce((a, b) => a + b, 0) / interview.scores.length).toFixed(1);
-                
+                const validScores = interview.scores.filter(s => typeof s === 'number');
+                const avg = validScores.length ? (validScores.reduce((a, b) => a + b, 0) / validScores.length).toFixed(1) : 0;
+
                 labels.push(dateStr);
                 dataPoints.push(parseFloat(avg));
-                
-                // Highlight the currently viewed interview
-                if (interview.id.toString() === currentInterviewId.toString()) {
+
+                // Highlight the very last interview as 'current'
+                if (idx === roleHistory.length - 1) {
                     pointColors.push('#10B981'); // Emerald green for current
                     pointRadiuses.push(6);
                     currentScore = parseFloat(avg);
-                    currentIdx = idx;
                 } else {
                     pointColors.push('#4F46E5'); // Primary color for others
                     pointRadiuses.push(4);
                 }
             });
 
-            // Calculate Improvement Text if this isn't the very first attempt ever
+            // Calculate Improvement Text
             const improvementTextEl = document.getElementById('historyImprovementText');
-            if (currentIdx > 0) {
-                const previousScore = dataPoints[currentIdx - 1];
+            if (roleHistory.length > 1) {
+                const previousScore = dataPoints[dataPoints.length - 2];
                 const delta = (currentScore - previousScore).toFixed(1);
-                
+
                 if (delta > 0) {
                     improvementTextEl.innerHTML = `<span style="color: #10B981;">↑ Improved by ${delta} points</span> since previous attempt`;
                 } else if (delta < 0) {
@@ -800,17 +968,17 @@
                     improvementTextEl.innerHTML = `<span style="color: var(--text-muted);">- Score remained the same</span> as previous attempt`;
                 }
             } else {
-                improvementTextEl.innerHTML = `<span style="color: var(--text-muted);">This was your first attempt for this role.</span>`;
+                improvementTextEl.innerHTML = `<span style="color: var(--text-muted);">This was your first attempt.</span>`;
             }
 
             // Render Chart
-            const ctx = document.getElementById('modalHistoryChart').getContext('2d');
-            
-            if (modalChartInstance) {
-                modalChartInstance.destroy();
+            const ctx = document.getElementById('dashboardHistoryChart').getContext('2d');
+
+            if (historyChartInstance) {
+                historyChartInstance.destroy();
             }
 
-            modalChartInstance = new Chart(ctx, {
+            historyChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
@@ -836,7 +1004,7 @@
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     const roleName = roleHistory[context.dataIndex].role;
                                     return ` ${roleName} - Score: ${context.parsed.y}/10`;
                                 }
@@ -920,8 +1088,12 @@
 
         // Init
         fetchInterviews();
+        fetchInterviews();
+
+
+
+
 
     </script>
 </body>
-
 </html>
