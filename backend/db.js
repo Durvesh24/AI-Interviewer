@@ -51,7 +51,8 @@ export async function getDb() {
       connectionString: process.env.DATABASE_URL,
       ssl: {
         rejectUnauthorized: false // Required for Render/some cloud DBs
-      }
+      },
+      family: 4 // Force IPv4 to avoid ENETUNREACH on Render
     });
 
     // Test connection
