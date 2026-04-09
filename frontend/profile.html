@@ -59,6 +59,7 @@
             <div class="nav-links">
                 <a href="index.html#features" class="nav-link">Features</a>
                 <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a id="adminDashboardLink" href="admin-dashboard.html" class="nav-link" style="display: none;">Admin Dashboard</a>
                 <a href="index.html#about" class="nav-link">About</a>
                 <a href="index.html#contact" class="nav-link">Contact</a>
                 <a href="profile.html" class="nav-link" style="display: flex; align-items: center; gap: 0.25rem;">
@@ -170,6 +171,10 @@
                 document.getElementById('profileEmail').value = user.email || '';
                 document.getElementById('infoRole').textContent = user.role === 'admin' ? '👑 Admin' : '👤 User';
                 document.getElementById('infoLastLogin').textContent = user.last_login ? new Date(user.last_login).toLocaleString() : 'Never';
+                if (user.role === 'admin') {
+                    const adminLink = document.getElementById('adminDashboardLink');
+                    if (adminLink) adminLink.style.display = 'inline-flex';
+                }
             } catch (e) {
                 showToast('Failed to load profile: ' + e.message, 'error');
             }

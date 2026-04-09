@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - AI Interview Coach</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <span style="font-size: 2rem;">🤖</span>
+                <span>AI Interview Coach</span>
+            </a>
+            <button class="mobile-toggle" aria-label="Toggle Menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </button>
+            <div class="nav-links">
+                <a href="dashboard.html" class="nav-link">User Dashboard</a>
+                <a href="profile.html" class="nav-link">Profile</a>
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle Dark Mode"><span>🌙</span></button>
+                <button onclick="logout()" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="app-container" style="margin-top: 2rem; margin-bottom: 4rem;">
+        <header class="dashboard-header">
+            <div class="welcome-text">
+                <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">Admin Control Center</h1>
+                <p style="color: var(--text-muted);">Monitor users, interviews, resume reviews, and SQL-driven admin insights.</p>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+                <button id="refreshAdminBtn" class="btn btn-primary">Refresh Dashboard</button>
+                <a href="admin-user-details.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">User Details</a>
+            </div>
+        </header>
+
+        <section style="margin-bottom: 2rem;">
+            <div class="stats-grid" id="adminStatsGrid">
+                <div class="card stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-info">
+                        <h4>Total Users</h4>
+                        <div class="value" id="admin-total-users">0</div>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon">👑</div>
+                    <div class="stat-info">
+                        <h4>Admins</h4>
+                        <div class="value" id="admin-total-admins">0</div>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-info">
+                        <h4>Total Interviews</h4>
+                        <div class="value" id="admin-total-interviews">0</div>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon">📄</div>
+                    <div class="stat-info">
+                        <h4>Resume Reviews</h4>
+                        <div class="value" id="admin-total-resumes">0</div>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon">⭐</div>
+                    <div class="stat-info">
+                        <h4>Avg Score</h4>
+                        <div class="value" id="admin-average-score">0.0</div>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-info">
+                        <h4>Top Role</h4>
+                        <div class="value" id="admin-top-role">-</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h3 style="margin-bottom: 0.5rem;">SQL Insights</h3>
+                    <p style="color: var(--text-muted); margin: 0;">Use safe admin queries to inspect the database without leaving the dashboard.</p>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
+                <div class="form-group">
+                    <label for="adminTableSelect">Table</label>
+                    <select id="adminTableSelect" class="select-field">
+                        <option value="users">Users</option>
+                        <option value="interviews">Interviews</option>
+                        <option value="resume_reviews">Resume Reviews</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="adminFieldSelect">Field</label>
+                    <select id="adminFieldSelect" class="select-field"></select>
+                </div>
+                <div class="form-group">
+                    <label for="adminSqlValue">Search</label>
+                    <input id="adminSqlValue" class="input-field" placeholder="Search by email, role, ID...">
+                </div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-top: 1rem;">
+                <button id="adminSqlSearchBtn" class="btn btn-primary">Run Query</button>
+                <span id="adminSearchStatus" style="color: var(--text-muted); font-size: 0.95rem;"></span>
+            </div>
+            <div id="adminSqlResults" style="margin-top: 1.5rem; overflow-x:auto;"></div>
+        </section>
+
+        <section style="display: grid; gap: 2rem; margin-bottom: 2rem;">
+            <div class="card" style="padding: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;">Engagement Charts</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                    <div style="background: var(--bg-body); border-radius: var(--radius-lg); padding: 1rem;">
+                        <h4 style="margin-bottom: 1rem;">Interviews by Role</h4>
+                        <canvas id="adminRoleChart" style="min-height: 260px;"></canvas>
+                    </div>
+                    <div style="background: var(--bg-body); border-radius: var(--radius-lg); padding: 1rem;">
+                        <h4 style="margin-bottom: 1rem;">Resume Review Score Bands</h4>
+                        <canvas id="adminResumeChart" style="min-height: 260px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">Latest Users</h3>
+                <div id="adminLatestUsers" style="display:grid; gap:1rem;"></div>
+            </div>
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">Recent Interviews</h3>
+                <div id="adminLatestInterviews" style="display:grid; gap:1rem;"></div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h3 style="margin-bottom: 1rem;">Recent Resume Reviews</h3>
+            <div id="adminLatestResumes" style="display:grid; gap:1rem;"></div>
+        </section>
+    </div>
+
+    <footer class="app-footer">
+        <div class="footer-grid">
+            <div class="footer-col">
+                <div class="logo">🤖 AI Interview Coach</div>
+            </div>
+            <div class="footer-col">
+                <p>&copy; <span id="currentYear"></span> Admin Dashboard</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script>
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : '';
+        const token = sessionStorage.getItem('token');
+        const role = sessionStorage.getItem('userRole');
+        const allowedFields = {
+            users: ['email', 'name', 'role'],
+            interviews: ['id', 'role', 'type'],
+            resume_reviews: ['id', 'role', 'file_path']
+        };
+
+        if (!token || role !== 'admin') {
+            window.location.href = 'dashboard.html';
+        }
+
+        const tableSelect = document.getElementById('adminTableSelect');
+        const fieldSelect = document.getElementById('adminFieldSelect');
+        const valueInput = document.getElementById('adminSqlValue');
+        const resultsContainer = document.getElementById('adminSqlResults');
+        const searchStatus = document.getElementById('adminSearchStatus');
+        const refreshBtn = document.getElementById('refreshAdminBtn');
+
+        function renderFieldOptions(table) {
+            fieldSelect.innerHTML = allowedFields[table].map(field => `<option value="${field}">${field.replace('_', ' ').toUpperCase()}</option>`).join('');
+        }
+
+        function createCardItem(title, subtitle, line2) {
+            return `
+                <div class="stat-card" style="padding:1.2rem; background: var(--bg-body); border-color: var(--border-color); box-shadow:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+                        <div>
+                            <div style="font-size:0.95rem; color:var(--text-muted); margin-bottom:0.5rem;">${title}</div>
+                            <div style="font-size:1.1rem; font-weight:700; color:var(--text-main);">${subtitle}</div>
+                        </div>
+                        <span style="color:var(--text-muted); font-size:0.9rem;">${line2 || ''}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function fetchAdminSummary() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/admin/summary`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) throw new Error('Unable to fetch admin summary');
+                const summary = await res.json();
+
+                document.getElementById('admin-total-users').innerText = summary.totalUsers;
+                document.getElementById('admin-total-admins').innerText = summary.totalAdmins;
+                document.getElementById('admin-total-interviews').innerText = summary.totalInterviews;
+                document.getElementById('admin-total-resumes').innerText = summary.totalResumeReviews;
+                document.getElementById('admin-average-score').innerText = summary.averageInterviewScore.toFixed(1);
+                document.getElementById('admin-top-role').innerText = summary.topRole || '-';
+
+                renderTopRoleChart(summary.topRoles);
+                renderResumeReviewChart(summary.resumeReviewBands);
+
+                document.getElementById('adminLatestUsers').innerHTML = summary.recentUsers.map(user => createCardItem(user.email, user.role.toUpperCase(), user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never')).join('');
+                document.getElementById('adminLatestInterviews').innerHTML = summary.recentInterviews.map(item => createCardItem(item.role, `Score ${item.averageScore}/10`, new Date(item.date).toLocaleDateString())).join('');
+                document.getElementById('adminLatestResumes').innerHTML = summary.recentResumeReviews.map(item => createCardItem(item.role, `ATS ${item.ats_score}%`, new Date(item.date).toLocaleDateString())).join('');
+
+                renderSqlResults(summary.recentUsers.map(u => ({ label: u.email, value: u.role })), true);
+            } catch (error) {
+                console.error(error);
+                showToast('Failed to load admin dashboard data.', 'error');
+            }
+        }
+
+        async function runAdminSqlSearch() {
+            const table = tableSelect.value;
+            const field = fieldSelect.value;
+            const value = valueInput.value.trim();
+            searchStatus.innerText = 'Searching...';
+            resultsContainer.innerHTML = '';
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/admin/sql-search`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ table, field, value })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Query failed');
+                renderSqlResults(data.rows);
+                searchStatus.innerText = `${data.rows.length} row(s) returned`;
+            } catch (error) {
+                searchStatus.innerText = 'Query failed';
+                resultsContainer.innerHTML = `<div style="color: var(--error);">${error.message}</div>`;
+                console.error(error);
+            }
+        }
+
+        function renderSqlResults(rows, compact = false) {
+            if (!Array.isArray(rows) || rows.length === 0) {
+                resultsContainer.innerHTML = '<div class="text-center" style="padding:1.5rem; color:var(--text-muted);">No results found.</div>';
+                return;
+            }
+
+            const columns = Object.keys(rows[0]);
+            const headerHtml = columns.map(col => `<th>${col}</th>`).join('');
+            const bodyHtml = rows.map(row => `
+                <tr>${columns.map(col => `<td>${String(row[col] ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>`).join('')}</tr>
+            `).join('');
+
+            resultsContainer.innerHTML = `
+                <div style="overflow-x:auto;">
+                    <table class="card" style="width:100%; border-collapse: collapse;">
+                        <thead style="background: rgba(79, 70, 229, 0.08);">
+                            <tr>${headerHtml}</tr>
+                        </thead>
+                        <tbody>${bodyHtml}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderTopRoleChart(data) {
+            const canvas = document.getElementById('adminRoleChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const labels = data.map(item => item.role);
+            const values = data.map(item => item.count);
+            if (window.adminRoleChart) window.adminRoleChart.destroy();
+            window.adminRoleChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{ data: values, backgroundColor: ['#4F46E5', '#EC4899', '#8B5CF6', '#22C55E', '#F59E0B'] }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        function renderResumeReviewChart(bands) {
+            const canvas = document.getElementById('adminResumeChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const labels = bands.map(item => item.range);
+            const values = bands.map(item => item.count);
+            if (window.adminResumeChart) window.adminResumeChart.destroy();
+            window.adminResumeChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{ data: values, backgroundColor: ['#10B981', '#F59E0B', '#EF4444', '#6366F1'] }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        tableSelect.addEventListener('change', () => renderFieldOptions(tableSelect.value));
+        document.getElementById('adminSqlSearchBtn').addEventListener('click', runAdminSqlSearch);
+        refreshBtn.addEventListener('click', fetchAdminSummary);
+
+        renderFieldOptions(tableSelect.value);
+        fetchAdminSummary();
+    </script>
+</body>
+
+</html>
