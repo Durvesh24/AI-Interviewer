@@ -73,6 +73,32 @@ html {
   scroll-behavior: smooth;
 }
 
+.hidden {
+  display: none !important;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table th,
+table td {
+  padding: 0.85rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  color: var(--text-main);
+}
+
+table thead th {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+table tbody tr:hover {
+  background: rgba(79, 70, 229, 0.04);
+}
+
 body {
   font-family: var(--font-main);
   background-color: var(--bg-body);

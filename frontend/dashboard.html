@@ -224,6 +224,7 @@
                 <p style="color: var(--text-muted);">Track your progress and interview history.</p>
             </div>
             <a href="mock-interview.html" id="startInterviewBtn" class="btn btn-primary">+ Start New Interview</a>
+            <a href="admin-dashboard.html" id="gotoAdminPageBtn" class="btn btn-secondary hidden" style="display:none; padding: 0.5rem 1rem;">Go to Admin Dashboard</a>
         </header>
 
         <!-- Learner Stats Section -->
@@ -420,6 +421,10 @@
             document.getElementById('admin-tab-btn').classList.remove('hidden');
             document.getElementById('startInterviewBtn').style.display = 'none';
             document.getElementById('analytics-tab').style.display = 'none';
+            const adminPageBtn = document.getElementById('gotoAdminPageBtn');
+            if (adminPageBtn) {
+                adminPageBtn.classList.remove('hidden');
+            }
         }
 
         // Tab Switching

@@ -510,6 +510,116 @@ app.get("/admin/all-resume-reviews", authenticateToken, async (req, res) => {
   }
 });
 
+// Admin: Dashboard Summary and SQL Search
+app.get("/admin/summary", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
+    const db = await getDb();
+
+    const totalUsersResult = await db.get("SELECT COUNT(*) AS count FROM users");
+    const totalAdminsResult = await db.get("SELECT COUNT(*) AS count FROM users WHERE role = 'admin'");
+    const totalInterviewsResult = await db.get("SELECT COUNT(*) AS count FROM interviews");
+    const totalResumeReviewsResult = await db.get("SELECT COUNT(*) AS count FROM resume_reviews");
+
+    const recentUsers = await db.all("SELECT id, email, role, name, last_login FROM users ORDER BY id DESC LIMIT 6");
+    const recentInterviewsRaw = await db.all("SELECT id, user_id, role, date, scores FROM interviews ORDER BY date DESC LIMIT 6");
+    const recentResumeReviews = await db.all("SELECT id, user_id, role, ats_score, date FROM resume_reviews ORDER BY date DESC LIMIT 6");
+
+    const allInterviews = await db.all("SELECT role, scores FROM interviews");
+    const parsedScores = [];
+    const roleCounts = {};
+
+    allInterviews.forEach(i => {
+      if (i.role) {
+        roleCounts[i.role] = (roleCounts[i.role] || 0) + 1;
+      }
+      try {
+        const scores = JSON.parse(i.scores || '[]');
+        if (Array.isArray(scores)) parsedScores.push(...scores.filter(s => typeof s === 'number'));
+      } catch (e) {
+        // ignore parse errors
+      }
+    });
+
+    const averageInterviewScore = parsedScores.length ? parsedScores.reduce((a, b) => a + b, 0) / parsedScores.length : 0;
+    const topRole = Object.entries(roleCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+    const topRoles = Object.entries(roleCounts).map(([role, count]) => ({ role, count })).sort((a,b)=>b.count-a.count).slice(0, 6);
+
+    const resumeReviewBands = [
+      { range: '80-100', count: 0 },
+      { range: '60-79', count: 0 },
+      { range: '40-59', count: 0 },
+      { range: '0-39', count: 0 }
+    ];
+    const allResumeReviews = await db.all("SELECT ats_score FROM resume_reviews");
+    allResumeReviews.forEach(r => {
+      const score = Number(r.ats_score);
+      if (score >= 80) resumeReviewBands[0].count++;
+      else if (score >= 60) resumeReviewBands[1].count++;
+      else if (score >= 40) resumeReviewBands[2].count++;
+      else resumeReviewBands[3].count++;
+    });
+
+    const recentInterviews = recentInterviewsRaw.map(i => {
+      let averageScore = 0;
+      try {
+        const scores = JSON.parse(i.scores || '[]');
+        const valid = Array.isArray(scores) ? scores.filter(s => typeof s === 'number') : [];
+        averageScore = valid.length ? (valid.reduce((a, b) => a + b, 0) / valid.length).toFixed(1) : 0;
+      } catch {
+        averageScore = 0;
+      }
+      return { ...i, averageScore };
+    });
+
+    res.json({
+      totalUsers: totalUsersResult.count || 0,
+      totalAdmins: totalAdminsResult.count || 0,
+      totalInterviews: totalInterviewsResult.count || 0,
+      totalResumeReviews: totalResumeReviewsResult.count || 0,
+      averageInterviewScore,
+      topRole,
+      topRoles,
+      resumeReviewBands,
+      recentUsers,
+      recentInterviews,
+      recentResumeReviews
+    });
+  } catch (err) {
+    console.error("ADMIN SUMMARY ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/admin/sql-search", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
+    const { table, field, value } = req.body;
+    const allowed = {
+      users: ['email', 'name', 'role'],
+      interviews: ['id', 'role', 'type'],
+      resume_reviews: ['id', 'role', 'file_path']
+    };
+
+    if (!allowed[table] || !allowed[table].includes(field)) {
+      return res.status(400).json({ error: "Invalid search parameters" });
+    }
+
+    const db = await getDb();
+    let rows;
+    if (!value || value.trim() === '') {
+      rows = await db.all(`SELECT * FROM ${table} ORDER BY id DESC LIMIT 50`);
+    } else {
+      rows = await db.all(`SELECT * FROM ${table} WHERE ${field} LIKE ? ORDER BY id DESC LIMIT 50`, [`%${value.trim()}%`]);
+    }
+
+    res.json({ rows });
+  } catch (err) {
+    console.error("ADMIN SQL SEARCH ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Admin: Delete Resume Review
 app.delete("/admin/resume-reviews/:id", authenticateToken, async (req, res) => {
   try {
